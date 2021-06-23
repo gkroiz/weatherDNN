@@ -43,10 +43,10 @@ if __name__ == "__main__":
                 #make a subdataset of the lat, long, and prec of the tile
                 tile = xr.Dataset(
                     data_vars=dict(
-                        PrecipRate_surface=data.PrecipRate_surface[0, 1023-lat*64-63:1023-lat*64, long*64:long*64+63]
+                        PrecipRate_surface=data.PrecipRate_surface[0, 1023-lat*64-64:1023-lat*64, long*64:long*64+64]
                     ),
                     coords = dict(
-                       time=data2.time
+                       time=data.time
                     ),
                     attrs = dict(Conventions='COARDS', History='created by wgrib2', GRIB2_grid_template = '0')
                     )
