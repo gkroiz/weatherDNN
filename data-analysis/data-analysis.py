@@ -3,14 +3,17 @@ import xarray as xr
 import time
 import os, os.path
 import matplotlib.pyplot as plt
+import sys
 
 if __name__ == "__main__":
     
+    year = sys.argv[1]
+    print('in file for year ' + str(year))
     #local
-    DATADIR = '/Users/gersonkroiz/research/SULI_2021/weatherDNN/netcdf/2004'
+    # DATADIR = '/Users/gersonkroiz/research/SULI_2021/weatherDNN/netcdf/2004'
 
     #on andes
-    # DATADIR = '/gpfs/alpine/cli900/world-shared/data/collections/mrms/subset_1024x1024/netcdf'
+    DATADIR = '/gpfs/alpine/cli900/world-shared/data/collections/mrms/subset_1024x1024/netcdf/' + str(year)
 
 
     #rain intensities based on https://www.baranidesign.com/faq-articles/2020/1/19/rain-rate-intensity-classification
@@ -23,16 +26,22 @@ if __name__ == "__main__":
     arr_num_moderate_rain = np.empty(num_files)
     arr_num_heavy_rain = np.empty(num_files)
     arr_num_violent_rain = np.empty(num_files)
-
+    # arr_have_rain = np.empty(num_files)
     counter = 0
     #iterate through each file in the directory
     for filename in os.listdir(DATADIR):
-        
+        print('file: ' + str(counter) + ', year: ' + year)
         #open file
         data = xr.open_dataset(f'{DATADIR}/{filename}')
 
         #calculate values
+
         num_zeroes = 1024*1024 - np.count_nonzero(data.PrecipRate_surface.data)
+        # if num_zeroes == 1024*1024:
+        #     arr_have_rain[counter] = 0
+        # else:
+        #     arr_have_rain[counter] = 1
+            
         nonzeroes = data.PrecipRate_surface.data[data.PrecipRate_surface.data != 0]
         light_rain = nonzeroes[nonzeroes < 2.5]
         moderate_rain = nonzeroes[nonzeroes > 2.5]
@@ -52,7 +61,7 @@ if __name__ == "__main__":
     end = time.time()
     
     print('time elapsed = ' + str(end - start))
-    
+    # np.save('have_rain.npy', arr_have_rain)
     
     #make plots
     if not os.path.isdir('figures'):
@@ -61,10 +70,10 @@ if __name__ == "__main__":
     #1024x1024 is dim of each netcdf file
     plot_data = [arr_num_zeroes/(1024*1024), arr_num_light_rain/(1024*1024), arr_num_moderate_rain/(1024*1024), arr_num_heavy_rain/(1024*1024), arr_num_violent_rain/(1024*1024)]
     titles = ['No Rain', 'Light Rain', 'Moderate Rain', 'Heavy Rain', 'Violent Rain']
-    savefig_names = ['no_rain.pdf', 'light_rain.pdf', 'moderate_rain.pdf', 'heavy_rain.pdf', 'violent_rain.pdf']
+    savefig_names = ['no_rain', 'light_rain', 'moderate_rain', 'heavy_rain', 'violent_rain']
     for i in range(5):
         plt.figure(i)
         plt.boxplot(plot_data[i],  0, '+')
         plt.ylabel('Percent of pixels')
         plt.title(titles[i])
-        plt.savefig(savefig_names[i])
+        plt.savefig(savefig_names[i] + '-' + str(year) + 'pdf')
