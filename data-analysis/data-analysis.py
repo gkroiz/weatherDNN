@@ -21,13 +21,21 @@ if __name__ == "__main__":
 
     num_files = len([name for name in os.listdir(DATADIR) if os.path.isfile(os.path.join(DATADIR, name))])
 
-    arr_num_zeroes = np.empty(num_files)
-    arr_num_light_rain = np.empty(num_files)
-    arr_num_moderate_rain = np.empty(num_files)
-    arr_num_heavy_rain = np.empty(num_files)
-    arr_num_violent_rain = np.empty(num_files)
+    # arr_num_zeroes = np.empty(num_files)
+    # arr_num_light_rain = np.empty(num_files)
+    # arr_num_moderate_rain = np.empty(num_files)
+    # arr_num_heavy_rain = np.empty(num_files)
+    # arr_num_violent_rain = np.empty(num_files)
     # arr_have_rain = np.empty(num_files)
+
     counter = 0
+
+    #count maximum precipitation amount:
+    max_precip = 0
+
+    #array for histogram:
+    sums = np.zeros(160)
+
     #iterate through each file in the directory
     for filename in os.listdir(DATADIR):
         print('file: ' + str(counter) + ', year: ' + year)
@@ -36,44 +44,66 @@ if __name__ == "__main__":
 
         #calculate values
 
-        num_zeroes = 1024*1024 - np.count_nonzero(data.PrecipRate_surface.data)
+
+        # num_zeroes = 1024*1024 - np.count_nonzero(data.PrecipRate_surface.data)
         # if num_zeroes == 1024*1024:
         #     arr_have_rain[counter] = 0
         # else:
         #     arr_have_rain[counter] = 1
             
-        nonzeroes = data.PrecipRate_surface.data[data.PrecipRate_surface.data != 0]
-        light_rain = nonzeroes[nonzeroes < 2.5]
-        moderate_rain = nonzeroes[nonzeroes > 2.5]
-        moderate_rain = moderate_rain[moderate_rain < 7.5]
-        heavy_rain = nonzeroes[nonzeroes > 7.5]
-        heavy_rain = heavy_rain[heavy_rain < 50]
-        violent_rain = nonzeroes[nonzeroes > 50]
+        # nonzeroes = data.PrecipRate_surface.data[data.PrecipRate_surface.data != 0]
+        # light_rain = nonzeroes[nonzeroes < 2.5]
+        # moderate_rain = nonzeroes[nonzeroes > 2.5]
+        # moderate_rain = moderate_rain[moderate_rain < 7.5]
+        # heavy_rain = nonzeroes[nonzeroes > 7.5]
+        # heavy_rain = heavy_rain[heavy_rain < 50]
+        # violent_rain = nonzeroes[nonzeroes > 50]
 
         #store values in arrays
-        arr_num_zeroes[counter] = num_zeroes
-        arr_num_light_rain[counter] = light_rain.size
-        arr_num_moderate_rain[counter] = moderate_rain.size
-        arr_num_heavy_rain[counter] = heavy_rain.size
-        arr_num_violent_rain[counter] = violent_rain.size
+        # arr_num_zeroes[counter] = num_zeroes
+        # arr_num_light_rain[counter] = light_rain.size
+        # arr_num_moderate_rain[counter] = moderate_rain.size
+        # arr_num_heavy_rain[counter] = heavy_rain.size
+        # arr_num_violent_rain[counter] = violent_rain.size
+
+        data.PrecipRate_surface.data[data.PrecipRate_surface.data > 160] = 160
+        sums += np.histogram(data.PrecipRate_surface.data, 160, (0,160))[0]
+    
+        if np.max(data.PrecipRate_surface.data) > max_precip:
+            max_precip = np.max(data.PrecipRate_surface.data)
 
         counter += 1
     end = time.time()
     
     print('time elapsed = ' + str(end - start))
+    print('max precip = ' + str(max_precip))
     # np.save('have_rain.npy', arr_have_rain)
     
-    #make plots
+    #check/make figures directory
     if not os.path.isdir('figures'):
         os.mkdir('figures')
     os.chdir('figures')
+
+    #make boxplots
     #1024x1024 is dim of each netcdf file
-    plot_data = [arr_num_zeroes/(1024*1024), arr_num_light_rain/(1024*1024), arr_num_moderate_rain/(1024*1024), arr_num_heavy_rain/(1024*1024), arr_num_violent_rain/(1024*1024)]
-    titles = ['No Rain', 'Light Rain', 'Moderate Rain', 'Heavy Rain', 'Violent Rain']
-    savefig_names = ['no_rain', 'light_rain', 'moderate_rain', 'heavy_rain', 'violent_rain']
-    for i in range(5):
-        plt.figure(i)
-        plt.boxplot(plot_data[i],  0, '+')
-        plt.ylabel('Percent of pixels')
-        plt.title(titles[i])
-        plt.savefig(savefig_names[i] + '-' + str(year) + 'pdf')
+    # plot_data = [arr_num_zeroes/(1024*1024), arr_num_light_rain/(1024*1024), arr_num_moderate_rain/(1024*1024), arr_num_heavy_rain/(1024*1024), arr_num_violent_rain/(1024*1024)]
+    # titles = ['No Rain', 'Light Rain', 'Moderate Rain', 'Heavy Rain', 'Violent Rain']
+    # savefig_names = ['no_rain', 'light_rain', 'moderate_rain', 'heavy_rain', 'violent_rain']
+    # for i in range(5):
+    #     plt.figure(i)
+    #     plt.boxplot(plot_data[i],  0, '+')
+    #     plt.ylabel('Percent of pixels')
+    #     plt.title(titles[i])
+    #     plt.savefig(savefig_names[i] + '-' + str(year) + 'pdf')
+
+    #make line histograms
+    #1024x1024 is dim of each netcdf file
+
+    plt.plot(sums/(1024*1024*num_files))
+    plt.ylim([10**(-10), 10**0])
+    plt.yscale('log')
+    plt.ylabel('PDF')
+    plt.xlabel('Precipitation Rate (mm/hr)')
+    plt.title('Precipitation Line Histogram for 1 year')
+    plt.locator_params(axis='y', numticks=20)
+    plt.savefig('line_hist' + str(year) + '.pdf')
