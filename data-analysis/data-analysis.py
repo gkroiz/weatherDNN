@@ -77,12 +77,14 @@ if __name__ == "__main__":
     
     print('time elapsed = ' + str(end - start))
     print('max precip = ' + str(max_precip))
-    # np.save('have_rain.npy', arr_have_rain)
+    os.chdir('sums')
+    np.save('sums' + str(year) + '.npy', sums)
+    print('num files for year ' + str(year) + ': ' + str(num_files))
     
     #check/make figures directory
-    if not os.path.isdir('figures'):
-        os.mkdir('figures')
-    os.chdir('figures')
+    # if not os.path.isdir('figures'):
+    #     os.mkdir('figures')
+    # os.chdir('figures')
 
     #make boxplots
     #1024x1024 is dim of each netcdf file
@@ -99,11 +101,11 @@ if __name__ == "__main__":
     #make line histograms
     #1024x1024 is dim of each netcdf file
 
-    plt.plot(sums/(1024*1024*num_files))
-    plt.ylim([10**(-10), 10**0])
-    plt.yscale('log')
-    plt.ylabel('PDF')
-    plt.xlabel('Precipitation Rate (mm/hr)')
-    plt.title('Precipitation Line Histogram for 1 year')
-    plt.locator_params(axis='y', numticks=20)
-    plt.savefig('line_hist' + str(year) + '.pdf')
+    # plt.plot(sums/(1024*1024*num_files))
+    # plt.ylim([10**(-10), 10**0])
+    # plt.yscale('log')
+    # plt.ylabel('PDF')
+    # plt.xlabel('Precipitation Rate (mm/hr)')
+    # plt.title('Precipitation Line Histogram for 1 year')
+    # plt.locator_params(axis='y', numticks=20)
+    # plt.savefig('line_hist' + str(year) + '.pdf')

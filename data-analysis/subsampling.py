@@ -2,18 +2,20 @@ import numpy as np
 import xarray as xr
 import time
 import os, os.path
-from mpi4py import MPI
+# from mpi4py import MPI
 import sys
 
 # import 
 
 
 if __name__ == "__main__":
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-    size = comm.Get_size()
+    # comm = MPI.COMM_WORLD
+    # rank = comm.Get_rank()
+    # size = comm.Get_size()
+    rank = int(os.environ["SLURM_PROCID"])
+    size = 16 #int(os.environ["SLURM_NPROCS"])
     
-    print('rank: ' + str(rank) + ' in file')
+    # print('rank: ' + str(rank) + ' in file')
 
     year = sys.argv[1]
     # print(size)
@@ -36,21 +38,24 @@ if __name__ == "__main__":
 
     #ON ANDES
     # TILESDIR = '/autofs/nccs-svm1_home1/gkroiz1/netcdf/tiles'
-    TILESDIR = '/gpfs/alpine/cli900/world-shared/users/gkroiz1/tiles'
+    TILESDIR = '/gpfs/alpine/cli900/world-shared/users/gkroiz1/tiles/' + str(year)
     if rank == 0:
+        print("Here, rank: " + str(rank))
         if not os.path.isdir(TILESDIR):
             os.mkdir(TILESDIR)
             os.chdir(TILESDIR)
             for tile in range(16*16):
                 os.mkdir('tile'+str(tile))
     
-    comm.Barrier()
+    # comm.Barrier()
 
-    print('rank: ' + str(rank) + ' after comm barrier')
+    time.sleep(60)
+
+    # print('rank: ' + str(rank) + ' after comm barrier')
     overallStart = time.time()
     #goes through each file
     for filename in os.listdir(DATADIR):
-        start = time.time()
+        # start = time.time()
 
         data = xr.open_dataset(f'{DATADIR}/{filename}')
 
@@ -61,11 +66,11 @@ if __name__ == "__main__":
             #goes through each longitude coord
             for long in range(16):
                 mpi_lat = lat + int(rank)*int(16/size)
-                # print(mpi_lat)
+                print(mpi_lat)
                 #make a subdataset of the lat, long, and prec of the tile
                 tile = xr.Dataset(
                     data_vars=dict(
-                        PrecipRate_surface=data.PrecipRate_surface[0, 1023-mpi_lat*64-64:1023-mpi_lat*64, long*64:long*64+64]
+                        PrecipRate_surface=data.PrecipRate_surface[0, 1024-mpi_lat*64-64:1024-mpi_lat*64, long*64:long*64+64]
                     ),
                     coords = dict(
                        time=data.time
@@ -78,7 +83,7 @@ if __name__ == "__main__":
                 os.chdir(TILESDIR + '/tile' + str(mpi_lat * 16 + long))
                 tile.to_netcdf(f't-' + str(mpi_lat * 16 + long) + '-' + str(filename), mode='w', format='netcdf4')
 
-        end = time.time()
+        # end = time.time()
         # print('rank: ' + str(rank) + ', time elapsed = ' + str(end - start))
 
     overallEnd = time.time()

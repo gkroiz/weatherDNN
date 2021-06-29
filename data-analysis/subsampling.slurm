@@ -1,6 +1,7 @@
 #!/bin/bash
-#SBATCH -N 6       ##number of nodes
+#SBATCH -N 5       ##number of nodes
 #SBATCH -t 10:00:00 ##time
+## SBATCH -t 00:10:00
 #SBATCH -A CLI900 ##research group name
 #SBATCH -J subsampling   ##job name
 ##SBATCH \-\-mem=0  ##declares all avaialble memory of node
@@ -15,16 +16,16 @@ conda activate weatherCNNEnv
 ## srun -n16 -N1 -c1 --cpu-binds=cores --exclusive python3 ../pythonscripts/preprocessing.py
 
 ##$1 is first commandline argument
-srun -n16 -N1 python3 subsampling.py 2001 &
-srun -n16 -N1 python3 subsampling.py 2002 &
-srun -n16 -N1 python3 subsampling.py 2003 &
-srun -n16 -N1 python3 subsampling.py 2004 &
-srun -n16 -N1 python3 subsampling.py 2005 &
-srun -n16 -N1 python3 subsampling.py 2006 &
-# srun -n16 -N1 python3 subsampling.py 2007 &
-# srun -n16 -N1 python3 subsampling.py 2008 &
-# srun -n16 -N1 python3 subsampling.py 2009 &
-# srun -n16 -N1 python3 subsampling.py 2010 &
-# srun -n16 -N1 python3 subsampling.py 2011 &
+# srun -n16 -N1 python3 subsampling.py 2001 &
+# srun -n16 -N1 python3 subsampling.py 2002 &
+# srun -n16 -N1 python3 subsampling.py 2003 &
+# srun -n16 -N1 python3 subsampling.py 2004 &
+# srun -n16 -N1 python3 subsampling.py 2005 &
+# srun -n16 -N1 python3 subsampling.py 2006 &
+srun -n16 -N1 python3 subsampling.py 2007 &
+srun -n16 -N1 python3 subsampling.py 2008 &
+srun -n16 -N1 python3 subsampling.py 2009 &
+srun -n16 -N1 python3 subsampling.py 2010 &
+srun -n16 -N1 python3 subsampling.py 2011 &
 
 wait
