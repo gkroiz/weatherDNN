@@ -1,3 +1,6 @@
+# Description: script takes folder with netcdf files, 
+# and splits each 1024x1024 netcdf file into 256 64x64 netcdf files
+
 import numpy as np
 import xarray as xr
 import time

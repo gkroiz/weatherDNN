@@ -1,3 +1,5 @@
+# Description: takes individual tiles and combines them into larger netcdf files by month for each year
+
 import netCDF4
 from netCDF4 import Dataset
 import time

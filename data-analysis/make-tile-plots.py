@@ -1,3 +1,6 @@
+# Description: takes sums and number of files for each individual tile, 
+# and creates 16x16 line histograms for each tile
+
 import numpy as np
 import xarray as xr
 import time

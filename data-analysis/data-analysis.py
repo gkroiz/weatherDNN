@@ -1,3 +1,7 @@
+# Description: script takes entire netcdf files, 
+# and calculates the precipitation amount on each pixel (1024x1024),
+# and then various plots can be created
+
 import numpy as np
 import xarray as xr
 import time
