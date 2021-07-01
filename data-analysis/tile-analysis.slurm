@@ -12,8 +12,6 @@ source /autofs/nccs-svm1_home1/gkroiz1/.bash_init-miniconda
 conda activate weatherCNNEnv
 ## module load python/3.6
 
-## srun -n16 -N1 -c1 --cpu-binds=cores --exclusive python3 ../pythonscripts/preprocessing.py
-
 ##$1 is first commandline argument
 srun -n16 -N1 python3 tile-analysis.py 2001 &
 srun -n16 -N1 python3 tile-analysis.py 2002 &
