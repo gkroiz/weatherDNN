@@ -46,7 +46,7 @@ if __name__ == "__main__":
             os.chdir(COMBINEDTILESDIR)
             # os.system('ncrcat ' + files + ' ' + COMBINEDTILESDIR + '/tile' + str(tileID) + '/t-' + str(tileID) + '-time-series.nc')
 
-            os.system('cdo mergetime ' + files + ' ' + COMBINEDTILESDIR + '/tile' + str(tileID) + '/t-' + str(tileID) + '-' + monthStr + '-time-series.nc')
+            os.system('cdo -mergetime -cat ' + files + ' ' + COMBINEDTILESDIR + '/tile' + str(tileID) + '/t-' + str(tileID) + '-' + monthStr + '-time-series.nc')
     end = time.time()
     
     # print('year: ' + str(year) + ', rank: ' + str(rank) + ', FINAL TIME = ' + str(overallEnd - overallStart))

@@ -20,8 +20,8 @@ if __name__ == "__main__":
     year = sys.argv[1]
     # print(size)
     #ON ANDES
-    DATADIR = '/gpfs/alpine/cli900/world-shared/data/collections/mrms/subset_1024x1024/netcdf/' + str(year)
-    # DATADIR = '/autofs/nccs-svm1_home1/gkroiz1/netcdf/2004'
+    # DATADIR = '/gpfs/alpine/cli900/world-shared/data/collections/mrms/subset_1024x1024/netcdf/' + str(year)
+    DATADIR = '/autofs/nccs-svm1_home1/gkroiz1/netcdf/2004'
 
     #ON LOCAL
     # DATADIR = '/Users/gersonkroiz/research/SULI_2021/weatherDNN/netcdf/2004'
@@ -37,8 +37,8 @@ if __name__ == "__main__":
     # TILESDIR = '/Users/gersonkroiz/research/SULI_2021/weatherDNN/tiles'
 
     #ON ANDES
-    # TILESDIR = '/autofs/nccs-svm1_home1/gkroiz1/netcdf/tiles'
-    TILESDIR = '/gpfs/alpine/cli900/world-shared/users/gkroiz1/tiles/' + str(year)
+    TILESDIR = '/autofs/nccs-svm1_home1/gkroiz1/netcdf/tiles'
+    # TILESDIR = '/gpfs/alpine/cli900/world-shared/users/gkroiz1/tiles/' + str(year)
     if rank == 0:
         print("Here, rank: " + str(rank))
         if not os.path.isdir(TILESDIR):
@@ -81,6 +81,7 @@ if __name__ == "__main__":
 
                 #save dataset
                 os.chdir(TILESDIR + '/tile' + str(mpi_lat * 16 + long))
+                # tile.to_netcdf(f't-' + str(mpi_lat * 16 + long) + '-' + str(filename), mode='w', format='netcdf4', unlimited_dims='time')
                 tile.to_netcdf(f't-' + str(mpi_lat * 16 + long) + '-' + str(filename), mode='w', format='netcdf4')
 
         # end = time.time()
