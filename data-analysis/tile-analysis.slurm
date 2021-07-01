@@ -16,15 +16,15 @@ conda activate weatherCNNEnv
 
 ##$1 is first commandline argument
 srun -n16 -N1 python3 tile-analysis.py 2001 &
-srun -n16 -N1 python3 combine-tiles.py 2002 &
-srun -n16 -N1 python3 combine-tiles.py 2003 &
-srun -n16 -N1 python3 combine-tiles.py 2004 &
-srun -n16 -N1 python3 combine-tiles.py 2005 &
-srun -n16 -N1 python3 combine-tiles.py 2006 &
-srun -n16 -N1 python3 combine-tiles.py 2007 &
-srun -n16 -N1 python3 combine-tiles.py 2008 &
-srun -n16 -N1 python3 combine-tiles.py 2009 &
-srun -n16 -N1 python3 combine-tiles.py 2010 &
-srun -n16 -N1 python3 combine-tiles.py 2011 &
+srun -n16 -N1 python3 tile-analysis.py 2002 &
+srun -n16 -N1 python3 tile-analysis.py 2003 &
+srun -n16 -N1 python3 tile-analysis.py 2004 &
+srun -n16 -N1 python3 tile-analysis.py 2005 &
+srun -n16 -N1 python3 tile-analysis.py 2006 &
+srun -n16 -N1 python3 tile-analysis.py 2007 &
+srun -n16 -N1 python3 tile-analysis.py 2008 &
+srun -n16 -N1 python3 tile-analysis.py 2009 &
+srun -n16 -N1 python3 tile-analysis.py 2010 &
+srun -n16 -N1 python3 tile-analysis.py 2011 &
 
 wait

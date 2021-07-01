@@ -15,16 +15,16 @@ conda activate weatherCNNEnv
 ## srun -n16 -N1 -c1 --cpu-binds=cores --exclusive python3 ../pythonscripts/preprocessing.py
 
 ##$1 is first commandline argument
+srun -N1 python3 make-tile-plots.py 2001 &
+srun -N1 python3 make-tile-plots.py 2002 &
+srun -N1 python3 make-tile-plots.py 2003 &
 srun -N1 python3 make-tile-plots.py 2004 &
-# srun -n16 -N1 python3 combine-tiles.py 2002 &
-# srun -n16 -N1 python3 combine-tiles.py 2003 &
-# srun -n16 -N1 python3 combine-tiles.py 2004 &
-# srun -n16 -N1 python3 combine-tiles.py 2005 &
-# srun -n16 -N1 python3 combine-tiles.py 2006 &
-# srun -n16 -N1 python3 combine-tiles.py 2007 &
-# srun -n16 -N1 python3 combine-tiles.py 2008 &
-# srun -n16 -N1 python3 combine-tiles.py 2009 &
-# srun -n16 -N1 python3 combine-tiles.py 2010 &
-# srun -n16 -N1 python3 combine-tiles.py 2011 &
+srun -N1 python3 make-tile-plots.py 2005 &
+srun -N1 python3 make-tile-plots.py 2006 &
+srun -N1 python3 make-tile-plots.py 2007 &
+srun -N1 python3 make-tile-plots.py 2008 &
+srun -N1 python3 make-tile-plots.py 2009 &
+srun -N1 python3 make-tile-plots.py 2010 &
+srun -N1 python3 make-tile-plots.py 2011 &
 
 wait
