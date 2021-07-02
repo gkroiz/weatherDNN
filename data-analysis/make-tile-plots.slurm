@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -N 1       ##number of nodes
+#SBATCH -N 11       ##number of nodes
 #SBATCH -t 01:00:00 ##time
 #SBATCH -A CLI900 ##research group name
 #SBATCH -J tile-plots   ##job name
