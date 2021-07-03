@@ -5,6 +5,8 @@ from json import load as loadf
 import netCDF4 as nc4
 import xarray as xr
 import numpy as np
+import pickle
+
 
 # from model import build_model
 
@@ -37,37 +39,58 @@ def genData(years, tile_loc, lead_time_sample, lead_time_label, tileIDs = [-1]):
 
             #open anual tile file
             file_loc = tile_year_loc + '/t-' + str(tiles[index]) + '-' + str(year) + '-time-series.nc'
-            fileData = xr.open_dataset(f'{file_loc}')
+            fileData = xr.open_dataset(file_loc)
+            print('final time: ' + str(fileData.time[-1]))
 
             #go through time series
             # for time_frame in range(fileData.PrecipRate_surface.shape[0]):
             counter = 0
-            for time_frame in fileData.time:  
-
+            # continue_counter = 
+            needContinue = False
+            continueCounter = 0
+            total_time_per_sample = lead_time_sample + lead_time_label
+            total_num_time_frames = int(total_time_per_sample / 5)
+            for index in range(len(fileData.time)):  
+                if needContinue == True:
+                    continueCounter += 1
+                    if continueCounter == total_num_time_frames - 1:
+                        continueCounter = 0
+                        needContinue = False
+                    continue
+                    
+                print('index: ' + str(index))
+                time_frame = fileData.time[index]
                 #check that you have consecutive tiles
-                total_time_per_sample = lead_time_sample + lead_time_label
-                total_num_time_frames = int(total_time_per_sample / 5)
-                
 
                 #check to make sure you don't go out of bounds
-                if time_frame + np.timedelta64(total_num_time_frames, 'm') >= fileData.time[-1]:
+                print('ctouner: ' + str(counter))
+                print('time: ' + str(time_frame + np.timedelta64(total_time_per_sample, 'm')))
+                print('counter time: ' + str(fileData.time[counter+total_num_time_frames]))
+
+                if time_frame.data + np.timedelta64(total_time_per_sample, 'm') >= fileData.time[-1]:
                     break
                 
                 #check if there are n consecutive time frames, where n = total_num_time_frames
                 isValid = False
-                if time_frame + np.timedelta64(total_time_per_sample, 'm') == fileData.time[counter]:
+                if counter + total_num_time_frames >= fileData.PrecipRate_surface.shape[0]:
+                    break
+                if time_frame.data + np.timedelta64(total_time_per_sample, 'm') == fileData.time[counter+total_num_time_frames]:
                     isValid = True
-
+                print('isValid: ' + str(isValid))
                 if isValid:
-                    np.append(dataset, fileData.PrecipRate_surface[time_frame:time_frame+total_num_time_frames])
+                    dataset.append(fileData.PrecipRate_surface[counter:counter+total_num_time_frames])
                     counter += total_num_time_frames
-                    time_frame += np.timedelta64(total_num_time_frames, 'm')
+                    # time_frame.data += np.timedelta64(total_time_per_sample, 'm')
+                    # index += total_num_time_frames
+                    needContinue = True
+                    print('index in isValid:' + str(index))
+                    print('time in isValid: ' + str(time_frame + np.timedelta64(total_time_per_sample, 'm')))
                 else:
                     counter += 1
 
                 
-
-    return dataset
+        numpy_dataset = np.array(dataset)
+    return numpy_dataset
 
 # class InputData:
 #     def __init__(self, data, lead_time_sample, lead_time_label):
@@ -97,12 +120,12 @@ if __name__ == "__main__":
     end = time.time()
 
     np.save('/autofs/nccs-svm1_home1/gkroiz1/weatherDNN/pythonfiles/train_data.npy', train_data)
-
+    # pickle.dump(train_data, open('/autofs/nccs-svm1_home1/gkroiz1/weatherDNN/pythonfiles/train_data.pickle', 'wb'))
     print('after train data')
+    print('time elapsed = ' + str(end - start))
 
     print(train_data.shape)
 
-    print('time elapsed = ' + str(end - start))
 
     # model = build_model
     # model.compile()
