@@ -7,6 +7,8 @@ import xarray as xr
 import numpy as np
 import pickle
 from model import build_model
+from matplotlib import pyplot as plt
+import tensorflow.keras as keras
 
 
 # from model import build_model
@@ -101,7 +103,14 @@ def genData(years, tile_loc, lead_time_sample, lead_time_label, tileIDs = [-1]):
 #         self.lead_time_sample = lead_time_sample
 #         self.lead_time_label = lead_time_label
 
-
+def plotTraining(history):
+    plt.plot(history.history['acc'])
+    plt.plot(history.history['val_acc'])
+    plt.title('model accuracy')
+    plt.ylabel('accuracy')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'val'], loc='upper left')
+    plt.savefig('trainingplot.pdf')
 
 if __name__ == "__main__":
 
@@ -115,6 +124,9 @@ if __name__ == "__main__":
     test_years = json_params["test_years"]
     lead_time_x = json_params["lead_time_x"]
     lead_time_y = json_params["lead_time_y"]
+
+    lead_frames_x = int(lead_time_x/5)
+    lead_frames_y = int(lead_time_y/5)
 
     #directory where tiles are located
     TILESDIR = '/gpfs/alpine/cli900/world-shared/users/gkroiz1/combined-tiles/'
@@ -157,26 +169,29 @@ if __name__ == "__main__":
     val_data = np.expand_dims(val_data, axis=-1)
     test_data = np.expand_dims(test_data, axis=-1)
 
-    train_x = train_data[:,0:lead_time_x]
-    train_y = train_data[:,lead_time_x:lead_time_x + lead_time_y]
+    train_x = train_data[:,0:lead_frames_x]
+    train_y = train_data[:,lead_frames_x-1:lead_frames_x+lead_frames_y-1]
 
-    val_x = val_data[:,0:lead_time_x]
-    val_y = val_data[:,lead_time_x:lead_time_x + lead_time_y]
+    val_x = val_data[:,0:lead_frames_x]
+    val_y = val_data[:,lead_frames_x-1:lead_frames_x + lead_frames_y-1]
 
-    test_x = test_data[:,0:lead_time_x]
-    test_y = test_data[:,lead_time_x:lead_time_x + lead_time_y]
+    test_x = test_data[:,0:lead_frames_x]
+    test_y = test_data[:,lead_frames_x-1:lead_frames_x + lead_frames_y-1]
 
     print('before reshaping')
     # train_x = train_x.reshape((train_x.shape[0], lead_time_x, 64, 64))
     # train_y = train_y.reshape((train_y.shape[0], lead_time_y))
 
     model = build_model(train_x, num_layers = 1, filters = 64, kernel = 3)
-    model.compile(loss='Loss', optimizer='adam', metrics=['accuracy'])
+    model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
 
     print(model.summary())
-    model.fit(train_x, train_y, batch_size=32, validation_data=[val_x, val_y], epochs=3)
+    history = model.fit(train_x, train_y, batch_size=64, validation_data=[val_x, val_y], epochs=100)
 
-    # model = build_model
-    # model.compile()
+    model.save('trained_model.h5')
 
-    # model.fit()
+    #load model
+    # keras.models.load_model('trained_model.h5')
+
+
+    plotTraining(history)
