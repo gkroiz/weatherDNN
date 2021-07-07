@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -N 1       ##number of nodes
-#SBATCH -t 24:00:00 ##time
+#SBATCH -t 01:00:00 ##time
 #SBATCH -A CLI900 ##research group name
 #SBATCH -J combine-tiles   ##job name
 ##SBATCH \-\-mem=0  ##declares all avaialble memory of node
