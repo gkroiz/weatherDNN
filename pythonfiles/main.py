@@ -1,3 +1,6 @@
+# file description: where main is located, generates data, compiles model,
+# trains model, and eval's model
+
 import pandas as pd
 import os
 import time
@@ -14,7 +17,6 @@ import tensorflow.keras as keras
 # from model import build_model
 
 #tf.records, faster than other formats for I/O data
-
 
 #label should be 1 64x64
 #lead_time_sample and lead_time_label should be in terms of minutes
@@ -97,14 +99,6 @@ def genData(years, tile_loc, lead_time_sample, lead_time_label, tileIDs = [-1]):
                 
         numpy_dataset = np.array(dataset)
     return numpy_dataset
-
-# class InputData:
-#     def __init__(self, data, lead_time_sample, lead_time_label):
-#         #(lead_time * 12, 64, 64)
-#         self.data = data
-
-#         self.lead_time_sample = lead_time_sample
-#         self.lead_time_label = lead_time_label
 
 def plotTraining(history):
     plt.plot(history.history['acc'])
@@ -192,12 +186,13 @@ if __name__ == "__main__":
     # train_x = train_x.reshape((train_x.shape[0], lead_time_x, 64, 64))
     # train_y = train_y.reshape((train_y.shape[0], lead_time_y))
 
-    model = build_model(train_x, num_layers = 1, filters = 64, kernel = 3)
-    opt = keras.optimizers.Adam(learning_rate=1e-4)
+    #kernel = 3 based on https://arxiv.org/pdf/1506.04214.pdf, kernel 5 results in more complex model
+    model = build_model(train_x, num_layers = 1, filters = 64, kernel_size = 3)
+    opt = keras.optimizers.Adam(learning_rate=1e-2)
     model.compile(loss='mse', optimizer=opt, metrics =['mse', 'accuracy'])
 
     print(model.summary())
-    history = model.fit(train_x, train_y, batch_size=512, validation_data=[val_x, val_y], epochs=50,
+    history = model.fit(train_x, train_y, batch_size=512, validation_data=(val_x, val_y), epochs=50,
         callbacks=[keras.callbacks.EarlyStopping(
                         monitor='val_loss',
                         min_delta=0,
@@ -213,3 +208,5 @@ if __name__ == "__main__":
 
 
     plotTraining(history)
+
+    #write code to test model:
