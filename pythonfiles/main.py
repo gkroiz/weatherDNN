@@ -81,7 +81,10 @@ def genData(years, tile_loc, lead_time_sample, lead_time_label, tileIDs = [-1]):
                     isValid = True
                 # print('isValid: ' + str(isValid))
                 if isValid:
-                    dataset.append(fileData.PrecipRate_surface[counter:counter+total_num_time_frames])
+
+                    #check if there are NaN values, if so, do not include
+                    if not np.isnan(fileData.PrecipRate_surface[counter:counter+total_num_time_frames]).any():
+                        dataset.append(fileData.PrecipRate_surface[counter:counter+total_num_time_frames])
                     counter += total_num_time_frames
                     # time_frame.data += np.timedelta64(total_time_per_sample, 'm')
                     # index += total_num_time_frames
@@ -169,6 +172,13 @@ if __name__ == "__main__":
     val_data = np.expand_dims(val_data, axis=-1)
     test_data = np.expand_dims(test_data, axis=-1)
 
+    #normalize data:
+    max_val = max(np.max(train_data), np.max(val_data))
+
+    train_data = train_data/max_val
+    val_data = val_data/max_val
+    test_data = test_data/max_val
+
     train_x = train_data[:,0:lead_frames_x]
     train_y = train_data[:,lead_frames_x-1:lead_frames_x+lead_frames_y-1]
 
@@ -183,10 +193,18 @@ if __name__ == "__main__":
     # train_y = train_y.reshape((train_y.shape[0], lead_time_y))
 
     model = build_model(train_x, num_layers = 1, filters = 64, kernel = 3)
-    model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
+    opt = keras.optimizers.Adam(learning_rate=1e-4)
+    model.compile(loss='mse', optimizer=opt, metrics =['mse', 'accuracy'])
 
     print(model.summary())
-    history = model.fit(train_x, train_y, batch_size=64, validation_data=[val_x, val_y], epochs=100)
+    history = model.fit(train_x, train_y, batch_size=512, validation_data=[val_x, val_y], epochs=50,
+        callbacks=[keras.callbacks.EarlyStopping(
+                        monitor='val_loss',
+                        min_delta=0,
+                        patience=2,
+                        verbose=1, 
+                        mode='auto'
+                    )])
 
     model.save('trained_model.h5')
 
