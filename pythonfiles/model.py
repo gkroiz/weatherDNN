@@ -20,10 +20,10 @@ def build_model(train_x, num_layers,filters, kernel):
         print('in for loop')
         x = layers.ConvLSTM2D(filters, kernel_size=(kernel, kernel), padding='same', return_sequences=True, activation='relu')(x)
 #     x = layers.Dense(64)(x)
-    x = layers.ConvLSTM2D(filters, kernel_size=(kernel, kernel), padding='same', return_sequences=False, activation='relu')(x)
+    # x = layers.ConvLSTM2D(filters, kernel_size=(kernel, kernel), padding='same', return_sequences=False, activation='relu')(x)
 
-    # x = layers.Conv2D(
-        # filters=1, kernel_size=(kernel, kernel), activation="relu", padding="same")(x)
+    x = layers.Conv2D(
+        filters=1, kernel_size=(kernel, kernel), activation="relu", padding="same")(x)
     
     model = keras.models.Model(inp, x)
     # model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
