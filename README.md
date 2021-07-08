@@ -17,6 +17,9 @@ This directory includes
 To run this on andes, please use run.slurm, which runs main.py as a slurm job.
 Alternatively, you can run directly using python3
 
+### scripts
+TBD
+
 ### Conda Environment Dependencies
 dependencies:
   - xarray
