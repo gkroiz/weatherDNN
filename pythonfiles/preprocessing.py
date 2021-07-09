@@ -40,6 +40,8 @@ def genDataset(years, tile_loc, lead_time_sample, lead_time_label, tileIDs = [-1
             #open anual tile file
             file_loc = tile_year_loc + '/t-' + str(tiles[tileIndex]) + '-' + str(year) + '-time-series.nc'
             fileData = xr.open_dataset(file_loc)
+
+            print('size of .nc file: ' + str(fileData.PrecipRate_surface.shape))
             # print('final time: ' + str(fileData.time[-1]))
 
             #go through time series
@@ -98,7 +100,7 @@ def genDataset(years, tile_loc, lead_time_sample, lead_time_label, tileIDs = [-1
 
 #uses genDataset to create train, val, test, and save it to npy
 def train_val_test_gen(train_loc, val_loc, test_loc,):
-    with open("main.json", 'r') as inFile:
+    with open("preprocessing.json", 'r') as inFile:
         json_params = loadf(inFile)
     #create one variable that includes all of the data
 

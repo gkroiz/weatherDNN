@@ -35,7 +35,7 @@ if __name__ == "__main__":
     lead_time_y = json_params["lead_time_y"]
     lead_frames_x = int(lead_time_x/5)
     lead_frames_y = int(lead_time_y/5)
-    
+
     train_data, val_data, test_data = [], [], []
 
     needMakeData = False
@@ -54,6 +54,9 @@ if __name__ == "__main__":
 
 
     train_val_test_gen(train_loc, val_loc, test_loc)
+    
+    print('lead_frames_x: ' + str(lead_frames_x))
+    print('lead_frames_y: ' + str(lead_frames_y))
     train_x = train_data[:,0:lead_frames_x]
     train_y = train_data[:,lead_frames_x-1:lead_frames_x+lead_frames_y-1]
 
@@ -69,7 +72,7 @@ if __name__ == "__main__":
 
     #kernel = 3 based on https://arxiv.org/pdf/1506.04214.pdf, kernel 5 results in more complex model
     model = build_model(train_x, num_layers = 1, filters = 64, kernel_size = 3)
-    opt = keras.optimizers.Adam(learning_rate=1e-2)
+    opt = keras.optimizers.Adam(learning_rate=1e-3)
     model.compile(loss='mse', optimizer=opt, metrics =['mse', 'accuracy'])
 
     print(model.summary())
