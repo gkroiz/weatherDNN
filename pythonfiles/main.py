@@ -15,14 +15,22 @@ from matplotlib import pyplot as plt
 import tensorflow.keras as keras
 import tensorflow as tf
 
+def scheduler(epoch, lr):
+    if epoch < 10:
+        return lr
+    else:
+        return lr * tf.math.exp(-0.1)
+
+
 def plotTraining(history):
-    plt.plot(history.history['acc'])
-    plt.plot(history.history['val_acc'])
+    print('in plotting function')
+    plt.plot(history.history['accuracy'])
+    plt.plot(history.history['val_accuracy'])
     plt.title('model accuracy')
     plt.ylabel('accuracy')
     plt.xlabel('epoch')
     plt.legend(['train', 'val'], loc='upper left')
-    plt.savefig('trainingplot.pdf')
+    plt.savefig('/home/gkroiz1/weatherDNN/pythonfiles/trainingplot.pdf')
 
 if __name__ == "__main__":
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
@@ -77,18 +85,24 @@ if __name__ == "__main__":
 
     #kernel = 3 based on https://arxiv.org/pdf/1506.04214.pdf, kernel 5 results in more complex model
     model = build_model(train_x, num_layers = 2, filters = 64, kernel_size = 3)
-    opt = keras.optimizers.Adam(learning_rate=1e-4)
-    model.compile(loss='mse', optimizer=opt, metrics =['mse', 'accuracy'])
+    opt = keras.optimizers.Adam(learning_rate=1e-2)
 
-    print(model.summary())
-    history = model.fit(train_x, train_y, batch_size=64, validation_data=(val_x, val_y), epochs=50, verbose = 2,
-        callbacks=[keras.callbacks.EarlyStopping(
+
+
+    model.compile(loss='mse', optimizer=opt, metrics =['mse', 'accuracy'])
+    
+    early_stopping = keras.callbacks.EarlyStopping(
                         monitor='val_loss',
                         min_delta=0,
-                        patience=5,
+                        patience=10,
                         verbose=1, 
                         mode='auto'
-                    )])
+                    )
+    learning_rate = keras.callbacks.LearningRateScheduler(scheduler)
+
+    print(model.summary())
+    history = model.fit(train_x, train_y, batch_size=64, validation_data=(val_x, val_y), epochs=500, verbose = 2,
+        callbacks=[early_stopping, learning_rate])
 
     model.save('trained_model.h5')
 
@@ -98,4 +112,5 @@ if __name__ == "__main__":
 
     plotTraining(history)
 
+    print('after plotting')
     #write code to test model:

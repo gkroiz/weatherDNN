@@ -18,7 +18,7 @@ def build_model(train_x, num_layers,filters, kernel_size):
     x = layers.ConvLSTM2D(filters, (kernel_size, kernel_size), padding='same', return_sequences=True, activation='relu')(inp)
     for i in range(num_layers-1):
         print('in for loop')
-        x = layers.ConvLSTM2D(filters, (kernel_size, kernel_size), padding='same', return_sequences=True, activation='relu')(x)
+        x = layers.ConvLSTM2D(filters, (kernel_size, kernel_size), padding='same', return_sequences=True, activation='relu', dropout = 0.1, recurrent_dropout = 0.1)(x)
 #     x = layers.Dense(64)(x)
     # x = layers.ConvLSTM2D(filters, kernel_size=(kernel, kernel), padding='same', return_sequences=False, activation='relu')(x)
 
