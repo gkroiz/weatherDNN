@@ -99,7 +99,7 @@ def genDataset(years, tile_loc, lead_time_sample, lead_time_label, tileIDs = [-1
 
 
 #uses genDataset to create train, val, test, and save it to npy
-def train_val_test_gen(train_loc, val_loc, test_loc,):
+def train_val_test_gen(train_loc, val_loc, test_loc, tileIDs = [-1]):
     with open("preprocessing.json", 'r') as inFile:
         json_params = loadf(inFile)
     #create one variable that includes all of the data
@@ -125,9 +125,9 @@ def train_val_test_gen(train_loc, val_loc, test_loc,):
     test_loc = '/autofs/nccs-svm1_home1/gkroiz1/weatherDNN/pythonfiles/test_data.npy'
 
     train_data, val_data, test_data = [], [], []
-    train_data = genDataset(train_years, TILESDIR, lead_time_x, lead_time_y, [105])
-    val_data = genDataset(val_years, TILESDIR, lead_time_x, lead_time_y, [105])
-    test_data = genDataset(test_years, TILESDIR, lead_time_x, lead_time_y, [105])
+    train_data = genDataset(train_years, TILESDIR, lead_time_x, lead_time_y, tileIDs)
+    val_data = genDataset(val_years, TILESDIR, lead_time_x, lead_time_y, tileIDs)
+    test_data = genDataset(test_years, TILESDIR, lead_time_x, lead_time_y, tileIDs)
 
     train_data = np.expand_dims(train_data, axis=-1)
     val_data = np.expand_dims(val_data, axis=-1)
@@ -149,10 +149,10 @@ def train_val_test_gen(train_loc, val_loc, test_loc,):
     print('test.shape()' + str(test_data.shape))
 
     #normalize data:
-    max_val = max(np.max(train_data), np.max(val_data))
-    train_data = train_data/max_val
-    val_data = val_data/max_val
-    test_data = test_data/max_val
+    # max_val = max(np.max(train_data), np.max(val_data))
+    # train_data = train_data/max_val
+    # val_data = val_data/max_val
+    # test_data = test_data/max_val
 
     np.save(train_loc, train_data)
     np.save(val_loc, val_data)

@@ -52,8 +52,11 @@ if __name__ == "__main__":
     else:
         needMakeData = True
 
+    tileIDs = np.random.randint(0,256, 75)
 
-    train_val_test_gen(train_loc, val_loc, test_loc)
+    train_val_test_gen(train_loc, val_loc, test_loc, tileIDs)
+    
+    # exit()
     
     print('lead_frames_x: ' + str(lead_frames_x))
     print('lead_frames_y: ' + str(lead_frames_y))
