@@ -120,9 +120,9 @@ def train_val_test_gen(train_loc, val_loc, test_loc, tileIDs = [-1]):
 
     start = time.time()
 
-    train_loc = '/autofs/nccs-svm1_home1/gkroiz1/weatherDNN/pythonfiles/train_data.npy'
-    val_loc = '/autofs/nccs-svm1_home1/gkroiz1/weatherDNN/pythonfiles/val_data.npy'
-    test_loc = '/autofs/nccs-svm1_home1/gkroiz1/weatherDNN/pythonfiles/test_data.npy'
+    train_loc = json_params["train_loc"]
+    val_loc = json_params["val_loc"]
+    test_loc = json_params["test_loc"]
 
     train_data, val_data, test_data = [], [], []
     train_data = genDataset(train_years, TILESDIR, lead_time_x, lead_time_y, tileIDs)

@@ -13,6 +13,7 @@ from model import build_model
 from preprocessing import train_val_test_gen
 from matplotlib import pyplot as plt
 import tensorflow.keras as keras
+import tensorflow as tf
 
 def plotTraining(history):
     plt.plot(history.history['acc'])
@@ -24,7 +25,7 @@ def plotTraining(history):
     plt.savefig('trainingplot.pdf')
 
 if __name__ == "__main__":
-
+    print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
     with open("main.json", 'r') as inFile:
         json_params = loadf(inFile)
 
@@ -52,11 +53,12 @@ if __name__ == "__main__":
     else:
         needMakeData = True
 
-    tileIDs = np.random.randint(0,256, 75)
 
-    train_val_test_gen(train_loc, val_loc, test_loc, tileIDs)
     
     # exit()
+    if needMakeData:
+        tileIDs = np.random.randint(0,256, 75)
+        train_val_test_gen(train_loc, val_loc, test_loc, tileIDs)
     
     print('lead_frames_x: ' + str(lead_frames_x))
     print('lead_frames_y: ' + str(lead_frames_y))
@@ -74,16 +76,16 @@ if __name__ == "__main__":
     # train_y = train_y.reshape((train_y.shape[0], lead_time_y))
 
     #kernel = 3 based on https://arxiv.org/pdf/1506.04214.pdf, kernel 5 results in more complex model
-    model = build_model(train_x, num_layers = 1, filters = 64, kernel_size = 3)
-    opt = keras.optimizers.Adam(learning_rate=1e-3)
+    model = build_model(train_x, num_layers = 2, filters = 64, kernel_size = 3)
+    opt = keras.optimizers.Adam(learning_rate=1e-4)
     model.compile(loss='mse', optimizer=opt, metrics =['mse', 'accuracy'])
 
     print(model.summary())
-    history = model.fit(train_x, train_y, batch_size=512, validation_data=(val_x, val_y), epochs=50,
+    history = model.fit(train_x, train_y, batch_size=64, validation_data=(val_x, val_y), epochs=50, verbose = 2,
         callbacks=[keras.callbacks.EarlyStopping(
                         monitor='val_loss',
                         min_delta=0,
-                        patience=2,
+                        patience=5,
                         verbose=1, 
                         mode='auto'
                     )])

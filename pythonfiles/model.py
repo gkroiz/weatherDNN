@@ -8,7 +8,8 @@ import numpy as np
 
 def build_model(train_x, num_layers,filters, kernel_size):
     # inp = layers.Input(shape=(None, *train_x.shape[2:], 1))
-    inp = layers.Input(shape=(None, *train_x.shape[2:]))
+    # inp = layers.Input(shape=(None, *train_x.shape[2:]))
+    inp = layers.Input(shape=(train_x.shape[1:]))
 
     # inp = layers.Input(shape=(5, 64, 64))
 

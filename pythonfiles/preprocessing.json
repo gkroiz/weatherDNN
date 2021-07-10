@@ -3,5 +3,8 @@
     "val_years" : ["2004"],
     "test_years" : ["2005"],
     "lead_time_x" : 20,
-    "lead_time_y" : 5
+    "lead_time_y" : 5,
+    "train_loc":"/gpfs/alpine/cli900/world-shared/users/gkroiz1/data_for_model/train_data.npy",
+    "val_loc":"/gpfs/alpine/cli900/world-shared/users/gkroiz1/data_for_model/val_data.npy",
+    "test_loc":"/gpfs/alpine/cli900/world-shared/users/gkroiz1/data_for_model/test_data.npy"
 }
