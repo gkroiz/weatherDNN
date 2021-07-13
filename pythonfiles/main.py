@@ -14,6 +14,9 @@ from preprocessing import train_val_test_gen
 from matplotlib import pyplot as plt
 import tensorflow.keras as keras
 import tensorflow as tf
+from skimage.io import imread
+from skimage.transform import resize
+
 
 def scheduler(epoch, lr):
     if epoch < 10:
@@ -31,6 +34,35 @@ def plotTraining(history):
     plt.xlabel('epoch')
     plt.legend(['train', 'val'], loc='upper left')
     plt.savefig('/home/gkroiz1/weatherDNN/pythonfiles/trainingplot.pdf')
+
+# def train_batch_gen():
+
+# def val_batch_gen():
+
+class customDataLoader(keras.utils.Sequence):
+    def __init__(self, x_data, y_data, tileIDs, batch_size):
+        self.x_data, self.y_data = x_data, y_data
+        self.batch_size = batch_size
+        self.all_tiles = tileIDs
+        self.tiles_left = tileIDs
+        self.locationInTile = 0
+
+    # def __len__(self):
+        # return tf.math.ceil(len(self.x_data) / self.batch_size)
+
+    def __getitem__(self, idx):
+
+        
+        batch_x = self.x_data[idx * self.batch_size:(idx + 1) *
+        self.batch_size]
+        batch_y = self.y_data[idx * self.batch_size:(idx + 1) *
+        self.batch_size]
+
+        # return np.array([
+            # resize(imread(file_name), (200, 200))
+            #    for file_name in batch_x]), np.array(batch_y)
+    def on_epoch_end(self):
+        self.tiles_left = self.all_tiles
 
 if __name__ == "__main__":
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
@@ -64,6 +96,7 @@ if __name__ == "__main__":
 
     
     # exit()
+    print('needMakeData: ' + str(needMakeData))
     if needMakeData:
         tileIDs = np.random.randint(0,256, 75)
         train_val_test_gen(train_loc, val_loc, test_loc, tileIDs)
@@ -84,7 +117,7 @@ if __name__ == "__main__":
     # train_y = train_y.reshape((train_y.shape[0], lead_time_y))
 
     #kernel = 3 based on https://arxiv.org/pdf/1506.04214.pdf, kernel 5 results in more complex model
-    model = build_model(train_x, num_layers = 2, filters = 64, kernel_size = 3)
+    model = build_model(train_x, num_layers = 2, filters = 512, kernel_size = 3)
     opt = keras.optimizers.Adam(learning_rate=1e-2)
 
 
@@ -101,7 +134,15 @@ if __name__ == "__main__":
     learning_rate = keras.callbacks.LearningRateScheduler(scheduler)
 
     print(model.summary())
-    history = model.fit(train_x, train_y, batch_size=64, validation_data=(val_x, val_y), epochs=500, verbose = 2,
+    # history = model.fit(train_x, train_y, batch_size=64, validation_data=(val_x, val_y), epochs=500, verbose = 2,
+        # callbacks=[early_stopping, learning_rate])
+        
+    batch_size = 64
+    num_tiles = 75
+
+    train_dataset = customDataLoader(train_x, train_y, tileIDs, batch_size)
+    val_dataset = customDataLoader(val_x, val_y, tileIDs, batch_size)
+    history = model.fit(train_x, train_y, steps_per_epoch= 75, validation_data=(val_x, val_y), epochs=500, verbose = 2,
         callbacks=[early_stopping, learning_rate])
 
     model.save('trained_model.h5')
