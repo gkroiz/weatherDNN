@@ -8,7 +8,7 @@ import numpy as np
 import pickle
 from matplotlib import pyplot as plt
 import tensorflow.keras as keras
-
+import csv
 
 
 #tf.records, faster than other formats for I/O data
@@ -17,10 +17,12 @@ import tensorflow.keras as keras
 #lead_time_sample and lead_time_label should be in terms of minutes
 def genDataset(years, tile_loc, lead_time_sample, lead_time_label, tileIDs = [-1]):
     dataset = []
-    tiles = []
+    
 
     #for loop for each year in the range of years
     for year in years:
+        tiles = []
+        print('dataset shape before year ' + str(year))
         #check which tiles to add to dataset
         if tileIDs[0] == -1:
             tiles = list(range(0, 256))
@@ -33,7 +35,7 @@ def genDataset(years, tile_loc, lead_time_sample, lead_time_label, tileIDs = [-1
 
         #index through each of the selected tiles
         for tileIndex in range(len(tiles)):
-            # print('tile: ' + str(index))
+            # print('tile: ' + str(tileIndex))
             tile_year_loc = tiles_year_loc + 'tile' + str(tiles[tileIndex]) + '/'
             # sample = []
 
@@ -41,7 +43,7 @@ def genDataset(years, tile_loc, lead_time_sample, lead_time_label, tileIDs = [-1
             file_loc = tile_year_loc + '/t-' + str(tiles[tileIndex]) + '-' + str(year) + '-time-series.nc'
             fileData = xr.open_dataset(file_loc)
 
-            print('size of .nc file: ' + str(fileData.PrecipRate_surface.shape))
+            # print('size of .nc file: ' + str(fileData.PrecipRate_surface.shape))
             # print('final time: ' + str(fileData.time[-1]))
 
             #go through time series
@@ -99,7 +101,7 @@ def genDataset(years, tile_loc, lead_time_sample, lead_time_label, tileIDs = [-1
 
 
 #uses genDataset to create train, val, test, and save it to npy
-def train_val_test_gen(train_loc, val_loc, test_loc, tileIDs = [-1]):
+def train_val_test_gen(train_loc, val_loc, test_loc, data_info_loc, tileIDs = [-1]):
     with open("preprocessing.json", 'r') as inFile:
         json_params = loadf(inFile)
     #create one variable that includes all of the data
@@ -134,19 +136,28 @@ def train_val_test_gen(train_loc, val_loc, test_loc, tileIDs = [-1]):
     test_data = np.expand_dims(test_data, axis=-1)
 
     #randomly take only 10% of the data
-    train_idx = np.random.randint(train_data.shape[0], size = int(train_data.shape[0]/10))
-    train_data = train_data[train_idx, :]
+    # train_idx = np.random.randint(train_data.shape[0], size = int(train_data.shape[0]/10))
+    # train_data = train_data[train_idx, :]
 
-    val_idx = np.random.randint(val_data.shape[0], size = int(val_data.shape[0]/10))
-    val_data = val_data[val_idx, :]
+    # val_idx = np.random.randint(val_data.shape[0], size = int(val_data.shape[0]/10))
+    # val_data = val_data[val_idx, :]
 
-    test_idx = np.random.randint(test_data.shape[0], size = int(test_data.shape[0]/10))
-    test_data = test_data[test_idx, :]
+    # test_idx = np.random.randint(test_data.shape[0], size = int(test_data.shape[0]/10))
+    # test_data = test_data[test_idx, :]
 
     print('new shapes')
     print('train.shape()' + str(train_data.shape))
     print('val.shape()' + str(val_data.shape))
     print('test.shape()' + str(test_data.shape))
+
+    if not os.path.isfile(data_info_loc):
+        with open(data_info_loc, 'w') as cv:
+            cv.write('tileID, train_num_samples, val_num_samples, test_num_samples')
+
+    else:
+        with open('data_info.csv','a') as cv:
+            cv.write(str(tileIDs[0]), str(train_data.shape[0]), str(test_data.shape[0]), str(val_data.shape[0]))
+
 
     #normalize data:
     # max_val = max(np.max(train_data), np.max(val_data))
@@ -154,9 +165,9 @@ def train_val_test_gen(train_loc, val_loc, test_loc, tileIDs = [-1]):
     # val_data = val_data/max_val
     # test_data = test_data/max_val
 
-    np.save(train_loc, train_data)
-    np.save(val_loc, val_data)
-    np.save(test_loc, test_data)
+    np.save('/gpfs/alpine/cli900/world-shared/users/gkroiz1/data_for_model/train/train-t-' + str(tileIDs[0]), train_data)
+    np.save('/gpfs/alpine/cli900/world-shared/users/gkroiz1/data_for_model/val/val-t-' + str(tileIDs[0]), val_data)
+    np.save('/gpfs/alpine/cli900/world-shared/users/gkroiz1/data_for_model/test/test-t-' + str(tileIDs[0]), test_data)
 
     end = time.time()
 

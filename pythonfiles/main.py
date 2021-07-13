@@ -14,6 +14,7 @@ from preprocessing import train_val_test_gen
 from matplotlib import pyplot as plt
 import tensorflow.keras as keras
 import tensorflow as tf
+import random
 
 def scheduler(epoch, lr):
     if epoch < 10:
@@ -42,6 +43,7 @@ if __name__ == "__main__":
     test_loc = json_params["test_loc"]
     lead_time_x = json_params["lead_time_x"]
     lead_time_y = json_params["lead_time_y"]
+    data_info_loc = json_params["data_info_loc"]
     lead_frames_x = int(lead_time_x/5)
     lead_frames_y = int(lead_time_y/5)
 
@@ -64,9 +66,21 @@ if __name__ == "__main__":
 
     
     # exit()
+    # randomlyGenTiles = [218, 103, 82, 57, 14, 24, 198, 163, 110, 66, 93, 133, 15, 
+    # 51, 115, 151, 37, 234, 220, 85, 26, 56, 84, 183, 119, 105, 9, 137, 205, 
+    # 112, 250, 200, 131, 75, 177, 213, 207, 148, 178, 221, 125, 67, 169, 60, 
+    # 7, 204, 224, 228, 40, 181, 171, 255, 231, 100, 86, 74, 55, 114, 104, 180, 
+    # 168, 145, 238, 79, 187, 45, 116, 4, 245, 88, 147, 155, 23, 252, 18]
+    # randomlyGenTiles = [218]
     if needMakeData:
-        tileIDs = np.random.randint(0,256, 75)
-        train_val_test_gen(train_loc, val_loc, test_loc, tileIDs)
+        # tilesIDs = list(range(256))
+        tilesIDs = np.random.randint(0,256, 75)
+        for i in range(len(tilesIDs)):
+            # singleTile = random.choice(tilesIDs)
+            train_val_test_gen(train_loc, val_loc, test_loc, data_info_loc, [tilesIDs[i]])
+            # tilesIDs.remove(singleTile)
+    exit()
+
     
     print('lead_frames_x: ' + str(lead_frames_x))
     print('lead_frames_y: ' + str(lead_frames_y))
