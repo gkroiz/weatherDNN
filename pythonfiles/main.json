@@ -3,6 +3,7 @@
     "train_loc" : "/raid/gkroiz1/data/train_data.npy",
     "val_loc" : "/raid/gkroiz1/data/val_data.npy",
     "test_loc" : "/raid/gkroiz1/data/test_data.npy",
+    "data_info_loc": "/autofs/nccs-svm1_home1/gkroiz1/weatherDNN/pythonfiles/data_info.csv",
     "lead_time_x" : 20,
     "lead_time_y" : 5
 }
