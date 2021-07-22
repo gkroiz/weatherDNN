@@ -56,7 +56,6 @@ class customDataLoader(keras.utils.Sequence):
         self.dataType = dataType
         self.batches_in_tile_counter = 0
         self.tile_counter = 0
-        self.on_epoch_end()
 
 
     #returns number of steps per epoch, based on calculation outside of function
@@ -64,15 +63,17 @@ class customDataLoader(keras.utils.Sequence):
         return self.steps_per_epoch - 1
 
     #returns one batch
-    # def __getitem__(self):
     def __getitem__(self, index):
+
+        #read new file
         if (self.x_data.shape == (1,)):
             data = np.load(self.data_loc + self.dataType + '-t-' + str(self.all_tiles[self.tile_counter]) + '.npy')
             self.x_data = data[:,0:lead_frames_x]
             self.y_data = data[:,lead_frames_x-1:lead_frames_x+lead_frames_y-1]
 
+        #create batch (if batch size does not ift in dataset. i.e, your at the end of the file)
         self.batches_in_tile_counter += 1
-        if (self.batches_in_tile_counter) * self.batch_size-1 > self.x_data.shape[0]:
+        if (self.batches_in_tile_counter) * self.batch_size >= self.x_data.shape[0]:
             x = np.array(self.x_data[(self.batches_in_tile_counter-1) * self.batch_size:-1])
             y = np.array(self.y_data[(self.batches_in_tile_counter-1) * self.batch_size:-1])
             self.x_data = np.array([-1])
@@ -80,17 +81,20 @@ class customDataLoader(keras.utils.Sequence):
             self.batches_in_tile_counter = 0
             self.tile_counter += 1
             return x, y
+
+        #create batch (if batch size fits in dataset)
         else:
+
             x = np.array(self.x_data[(self.batches_in_tile_counter-1) * self.batch_size:self.batches_in_tile_counter * self.batch_size-1])
             y = np.array(self.y_data[(self.batches_in_tile_counter-1) * self.batch_size:self.batches_in_tile_counter * self.batch_size-1])
-
             return x, y
 
+    #reset variables at end of epoch
     def on_epoch_end(self):
-        print("HERE")
-        # self.tiles_left = self.all_tiles
         self.batches_in_tile_counter = 0
         self.tile_counter = 0
+        self.x_data = np.array([-1])
+        self.y_data = np.array([-1])
 
 if __name__ == "__main__":
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
@@ -208,7 +212,7 @@ if __name__ == "__main__":
     # keras.models.load_model('trained_model.h5')
 
 
-    # plotTraining(history)
+    plotTraining(history)
 
     print('after plotting')
     #write code to test model:
