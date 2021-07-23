@@ -19,6 +19,7 @@ from skimage.transform import resize
 # import math
 from csv import reader
 # import random
+from sys import getsizeof
 
 def scheduler(epoch, lr):
     if epoch < 10:
@@ -34,11 +35,20 @@ def plotTraining(history):
     plt.ylabel('accuracy')
     plt.xlabel('epoch')
     plt.legend(['train', 'val'], loc='upper left')
-    plt.savefig('/home/gkroiz1/weatherDNN/pythonfiles/trainingplot.pdf')
+    plt.savefig('/home/gkroiz1/weatherDNN/pythonfiles/trainingaccuracy.pdf')
+
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('model loss')
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'val'], loc='upper left')
+    plt.savefig('/home/gkroiz1/weatherDNN/pythonfiles/trainingval.pdf')
 
 #class to load in data that does not fit into memory
 class customDataLoader(keras.utils.Sequence):
-    def __init__(self, tileIDs, batch_size, steps_per_epoch, lead_frames_x, lead_frames_y, data_loc, dataType = 'err'):
+    def __init__(self, tileIDs, num_samples_per_tile, batch_size, steps_per_epoch, 
+    lead_frames_x, lead_frames_y, tileSize, data_loc, dataType = 'err'):
 
         #check to make sure you are working with train, val, or test data
         dataTypes = ['train','val','test']
@@ -46,9 +56,11 @@ class customDataLoader(keras.utils.Sequence):
             raise ValueError('Invalid data type for custom data loader. Expected one of %s' %dataTypes)
 
         #define class variables
-        self.x_data, self.y_data = np.array([-1]), np.array([-1])
+        # self.x_data, self.y_data = np.array([-1]), np.array([-1])
+        self.data = np.array([-1])
         self.batch_size = batch_size
         self.all_tiles = tileIDs
+        self.num_samples_per_tile =  num_samples_per_tile
         self.steps_per_epoch = steps_per_epoch
         self.data_loc = data_loc
         self.lead_frames_x = lead_frames_x
@@ -56,6 +68,8 @@ class customDataLoader(keras.utils.Sequence):
         self.dataType = dataType
         self.batches_in_tile_counter = 0
         self.tile_counter = 0
+        self.tileSize = tileSize
+
 
 
     #returns number of steps per epoch, based on calculation outside of function
@@ -64,47 +78,61 @@ class customDataLoader(keras.utils.Sequence):
 
     #returns one batch
     def __getitem__(self, index):
-
+        # print('mem of data: (' + str(getsizeof(self.data)) + '), self.data.shape: ' + str(self.data.shape))
         #read new file
-        if (self.x_data.shape == (1,)):
-            data = np.load(self.data_loc + self.dataType + '-t-' + str(self.all_tiles[self.tile_counter]) + '.npy')
-            self.x_data = data[:,0:lead_frames_x]
-            self.y_data = data[:,lead_frames_x-1:lead_frames_x+lead_frames_y-1]
+        if (self.data.shape == (1,)):
+           
+            self.data = np.load(self.data_loc + self.dataType + '-t-' + str(self.all_tiles[self.tile_counter]) + '.npy', mmap_mode='r')
+            # self.x_data = data[:,0:lead_frames_x]
+            # self.y_data = data[:,lead_frames_x-1:lead_frames_x+lead_frames_y-1]
 
         #create batch (if batch size does not ift in dataset. i.e, your at the end of the file)
         self.batches_in_tile_counter += 1
-        if (self.batches_in_tile_counter) * self.batch_size >= self.x_data.shape[0]:
-            x = np.array(self.x_data[(self.batches_in_tile_counter-1) * self.batch_size:-1])
-            y = np.array(self.y_data[(self.batches_in_tile_counter-1) * self.batch_size:-1])
-            self.x_data = np.array([-1])
-            self.y_data = np.array([-1])
+        # print('self.data_loc: ' + self.data_loc)
+        # print('self.dataType: ' + self.dataType)
+        # print('test: ' + self.data_loc + self.dataType + '-t-' + str(self.all_tiles[self.tile_counter]) + '.npy')
+        filename = self.data_loc + self.dataType + '-t-' + str(self.all_tiles[self.tile_counter]) + '.npy'
+        if (self.batches_in_tile_counter) * self.batch_size >= self.num_samples_per_tile[self.tile_counter]:
+            smallerBatchSize = self.num_samples_per_tile[self.tile_counter] % self.batch_size
+            x = self.data[(self.batches_in_tile_counter-1) * self.batch_size:-1, 0:self.lead_frames_x]
+            y = self.data[(self.batches_in_tile_counter-1) * self.batch_size:-1, self.lead_frames_x:self.lead_frames_x + self.lead_frames_y]
+            # print('x.shape: ' + str(x.shape) + ', y.shape: ' + str(y.shape))
+            # print('getsizeof(x): ' + str(getsizeof(x)) + ', getsizeof(y): ' + str(getsizeof(y)))
+            self.data = np.array([-1])
             self.batches_in_tile_counter = 0
             self.tile_counter += 1
+            # print(x.shape)
+
             return x, y
 
         #create batch (if batch size fits in dataset)
         else:
-
-            x = np.array(self.x_data[(self.batches_in_tile_counter-1) * self.batch_size:self.batches_in_tile_counter * self.batch_size-1])
-            y = np.array(self.y_data[(self.batches_in_tile_counter-1) * self.batch_size:self.batches_in_tile_counter * self.batch_size-1])
+            x = self.data[(self.batches_in_tile_counter-1) * self.batch_size:self.batches_in_tile_counter * self.batch_size, 0:self.lead_frames_x]
+            y = self.data[(self.batches_in_tile_counter-1) * self.batch_size:self.batches_in_tile_counter * self.batch_size, self.lead_frames_x: self.lead_frames_x + self.lead_frames_y]
+            # print('x.shape: ' + str(x.shape) + ', y.shape: ' + str(y.shape))
+            # print('getsizeof(x): ' + str(getsizeof(x)) + ', getsizeof(y): ' + str(getsizeof(y)))            
             return x, y
 
     #reset variables at end of epoch
     def on_epoch_end(self):
         self.batches_in_tile_counter = 0
         self.tile_counter = 0
-        self.x_data = np.array([-1])
-        self.y_data = np.array([-1])
+        self.data = np.array([-1])
 
 if __name__ == "__main__":
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    for gpu in gpus:
+        tf.config.experimental.set_memory_growth(gpu, True)
     with open("main.json", 'r') as inFile:
         json_params = loadf(inFile)
 
     print('tf version:' + str(tf.__version__))
-    batch_size = 32
-    num_tiles = 5#75
-    epochs = 5
+    batch_size = 64
+    num_tiles = 1#64
+    epochs = 100
+    tileSize = 256
     train_loc = json_params["train_loc"]
     val_loc = json_params["val_loc"]
     test_loc = json_params["test_loc"]
@@ -156,8 +184,10 @@ if __name__ == "__main__":
     tileIDs = data_info_df['tileID']
     print(tileIDs)
     # exit()
-    train_steps_per_epoch = int(np.sum((data_info_df['train_num_samples']/batch_size).apply(np.ceil)))
-    val_steps_per_epoch = int(np.sum((data_info_df['val_num_samples']/batch_size).apply(np.ceil)))
+    train_num_samples_per_tile = data_info_df['train_num_samples']
+    val_num_samples_per_tile = data_info_df['val_num_samples']
+    train_steps_per_epoch = int(np.sum((train_num_samples_per_tile/batch_size).apply(np.ceil)))
+    val_steps_per_epoch = int(np.sum((val_num_samples_per_tile/batch_size).apply(np.ceil)))
 
 
 
@@ -173,8 +203,8 @@ if __name__ == "__main__":
     # test_y = test_data[:,lead_frames_x-1:lead_frames_x + lead_frames_y-1]
     print('train steps: ' + str(train_steps_per_epoch) + ', val steps:' + str(val_steps_per_epoch))
 
-    train_batch_generator = customDataLoader(tileIDs, batch_size, train_steps_per_epoch, lead_frames_x, lead_frames_y, train_loc, 'train')
-    val_batch_generator = customDataLoader(tileIDs, batch_size, val_steps_per_epoch, lead_frames_x, lead_frames_y, val_loc, 'val')
+    train_batch_generator = customDataLoader(tileIDs, train_num_samples_per_tile, batch_size, train_steps_per_epoch, lead_frames_x, lead_frames_y, tileSize, train_loc, 'train')
+    val_batch_generator = customDataLoader(tileIDs, val_num_samples_per_tile, batch_size, val_steps_per_epoch, lead_frames_x, lead_frames_y, tileSize, val_loc, 'val')
 
     print('before reshaping')
     # train_x = train_x.reshape((train_x.shape[0], lead_time_x, 64, 64))
@@ -182,10 +212,16 @@ if __name__ == "__main__":
 
     #kernel = 3 based on https://arxiv.org/pdf/1506.04214.pdf, kernel 5 results in more complex model
 
-    input_shape = (None, 64, 64, 1)
+    input_shape = (None, tileSize, tileSize, 1)
     strategy = tf.distribute.MirroredStrategy()
+    # strategy = tf.distribute.experimental.CentralStorageStrategy()
+    # strategy = tf.distribute.experimental.ParameterServerStrategy(
+    # tf.distribute.cluster_resolver.TFConfigClusterResolver(),
+    # variable_partitioner=variable_partitioner)
+    # coordinator = tf.distribute.experimental.coordinator.ClusterCoordinator(
+    # strategy)
     with strategy.scope():
-        model = build_model(input_shape, num_layers = 2, filters = 64, kernel_size = 3)
+        model = build_model(input_shape, num_layers = 2, filters = 16, kernel_size = 3)
     opt = keras.optimizers.Adam(learning_rate=1e-2)
 
 

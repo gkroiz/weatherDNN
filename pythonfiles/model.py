@@ -6,11 +6,11 @@ from tensorflow.keras import layers
 # import tensorflow.keras.backend as K
 import numpy as np
 
-def build_model(train_x, num_layers,filters, kernel_size):
+def build_model(input_shape, num_layers,filters, kernel_size, dropout_rate = 0.2):
     # inp = layers.Input(shape=(None, *train_x.shape[2:], 1))
     # inp = layers.Input(shape=(None, *train_x.shape[2:]))
-    inp = layers.Input(shape=(train_x.shape[1:]))
-
+    # inp = layers.Input(shape=(train_x.shape[1:]))
+    inp = layers.Input(shape=(input_shape))
     # inp = layers.Input(shape=(5, 64, 64))
 
     # out = keras.Sequential()
@@ -18,7 +18,7 @@ def build_model(train_x, num_layers,filters, kernel_size):
     x = layers.ConvLSTM2D(filters, (kernel_size, kernel_size), padding='same', return_sequences=True, activation='relu')(inp)
     for i in range(num_layers-1):
         print('in for loop')
-        x = layers.ConvLSTM2D(filters, (kernel_size, kernel_size), padding='same', return_sequences=True, activation='relu', dropout = 0.1, recurrent_dropout = 0.1)(x)
+        x = layers.ConvLSTM2D(filters, (kernel_size, kernel_size), padding='same', return_sequences=True, activation='relu', dropout = dropout_rate, recurrent_dropout = dropout_rate)(x)
 #     x = layers.Dense(64)(x)
     # x = layers.ConvLSTM2D(filters, kernel_size=(kernel, kernel), padding='same', return_sequences=False, activation='relu')(x)
 
