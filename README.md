@@ -54,8 +54,9 @@ First, we want to create the tiles from the 1024x1024 region. You first need to 
 srun -n{NUMBER OF PROCESSES PER NODE} -N1 python3 create-tiles.py {YEAR} &
 ```
 
-NUMBER of PROCESSES PER NODE will determine the rank within ```create-tiles.py```
-YEAR will determine what year you are creating tiles for. This is a required command line argument for 
+```NUMBER OF PROCESSES PER NODE``` will determine the rank within ```create-tiles.py```
+
+```YEAR``` will determine what year you are creating tiles for. This is a required command line argument for 
 
 To create tiles for all 11 years of data, you will need to run the ```srun``` command for each year from 2001-2011. Running this will result in the same directory structure as shown previously
 
@@ -98,7 +99,7 @@ After Step 2.1, you need to fill the json parameters within ```main.json```.  Th
 CUDA_VISIBLE_DEVICES={GPU_IDS} python3 main.py 1> out.txt 2> err.txt &
 ```
 
-GPU_IDS is a list of numbers. For example if there are 8 GPUs available, the IDs will be 0,1,2,3,4,5,6,7. If you want to use 4 GPUs, write GPU_IDS = 0,1,2,3. 
+```GPU_IDS``` is a list of numbers. For example if there are 8 GPUs available, the IDs will be 0,1,2,3,4,5,6,7. If you want to use 4 GPUs, write ```GPU_IDS = 0,1,2,3```. 
 This will run the training process based on the datasets created in Step 2.1. Any errors will show in ```err.txt``` and the general output from the script will show in ```out.txt```. When running this, be careful of your batch size, as you can easily overload memory.
 
 ### Step 2.3: Run predictions.py
