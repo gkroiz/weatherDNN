@@ -1,5 +1,5 @@
-# weatherDNN
-PrecipRate Benchmark Dataset was designed for the SULI program at ORNL (2021). Conceptually, this dataset provides a benchmark dataset of precipitaion rates. Additionally, there is a baseline model that is provided. These two features are included to facilitate comparision between different deep learning architectures. The data is from the Multi-RADAR/Multi-sensor System (MRMS). A more in-depth description is provided in the technical report ```SULI_Report.pdf```.
+# PrecipRate Benchmark
+PrecipRate Benchmark was designed for the SULI program at ORNL (2021). Conceptually, this dataset provides a benchmark dataset of precipitaion rates. Additionally, there is a baseline model that is provided. These two features are included to facilitate comparision between different deep learning architectures. The data is from the Multi-RADAR/Multi-sensor System (MRMS). A more in-depth description is provided in the technical report ```SULI_Report.pdf```.
 
 To use this benchmark dataset, you must install the conda environment with the dependencies below. Using different versions of the dependencies may result in errors.
 

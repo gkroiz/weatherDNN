@@ -15,7 +15,7 @@ from json import load as loadf
 
 
 #currently, this only works with slurm scripts, as the rank and size are determined by slurm job arguments
-#however, this can easily be adjusted by setting rank and size accordingly (not based on slurm)
+#if you are not using slurm, please change rank and size accordingly
 #additionally, the year is based on command line argument
 if __name__ == "__main__":
     rank = int(os.environ["SLURM_PROCID"])
@@ -31,7 +31,7 @@ if __name__ == "__main__":
     data_dir_loc = json_params['data_dir_loc']
 
     #location of where to save tiles
-    tiles_dir_loc = json_params['tiles_dir_loc']
+    tiles_dir_loc = json_params['tiles_dir_loc'] + str(year)
 
     tile_dim = json_params['tile_dim']
     numTilesPerAxis = int(1024 / tile_dim)
@@ -43,7 +43,6 @@ if __name__ == "__main__":
 
     #make directory for tiles
     if rank == 0:
-        # print("Here, rank: " + str(rank))
         if not os.path.isdir(tiles_dir_loc):
             os.mkdir(tiles_dir_loc)
             os.chdir(tiles_dir_loc)
