@@ -99,7 +99,7 @@ After Step 2.1, you need to fill the json parameters within ```main.json```.  Th
 CUDA_VISIBLE_DEVICES={GPU_IDS} python3 main.py 1> out.txt 2> err.txt &
 ```
 
-```GPU_IDS``` is a list of numbers. For example if there are 8 GPUs available, the IDs will be 0,1,2,3,4,5,6,7. If you want to use 4 GPUs, write ```GPU_IDS = 0,1,2,3```. 
+```GPU_IDS``` is a list of numbers. For example if there are 8 GPUs available, the IDs will be 0,1,2,3,4,5,6,7. If you want to use 4 GPUs, fill ```GPU_IDS``` with ```0,1,2,3```, where you are using the GPUs with IDs 0,1,2, and 3.
 This will run the training process based on the datasets created in Step 2.1. Any errors will show in ```err.txt``` and the general output from the script will show in ```out.txt```. When running this, be careful of your batch size, as you can easily overload memory.
 
 ### Step 2.3: Run predictions.py
