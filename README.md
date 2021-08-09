@@ -1,5 +1,7 @@
 # weatherDNN
-PrecipRate Benchmark Dataset created for the SULI program at ORNL (2021). To use this benchmark dataset, you must install the conda environment with the dependencies below. Using different versions of the dependencies may result in errors.
+PrecipRate Benchmark Dataset was designed for the SULI program at ORNL (2021). Conceptually, this dataset provides a benchmark dataset of precipitaion rates. Additionally, there is a baseline model that is provided. These two features are included to facilitate comparision between different deep learning architectures. The data is from the Multi-RADAR/Multi-sensor System (MRMS). A more in-depth description is provided in the technical report included in the github repo.
+
+To use this benchmark dataset, you must install the conda environment with the dependencies below. Using different versions of the dependencies may result in errors.
 
 
 ## Conda Environment Dependencies
@@ -105,3 +107,7 @@ After Step 2.2, you will have a saved model. If you want to run predictions on t
 ```
 CUDA_VISIBLE_DEVICES={GPU_IDS} python3 predictions.py 1> out.txt 2> err.txt &
 ```
+
+## Acknowledgements
+
+The code was developed by Gerson Kroiz, mentored by Valentine Anantharaj. Special thanks to Junqi Yin and Aristeidia Tsaris for their technical guidance. This research used resources of the Oak Ridge Leadership Computing Facility, which is a DOE Office of Science User Facility, and the resources of the Compute and Data Environment for Science (CADES) at the Oak Ridge National Laboratory, both supported by the Office of Science of the U.S. Department of Energy under Contract DE-AC05-00OR22725. For any questions or concerns, please contact gkroiz1@umbc.edu
