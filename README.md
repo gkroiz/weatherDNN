@@ -1,38 +1,107 @@
 # weatherDNN
-deep neural network for SULI program at ORNL 2021
+PrecipRate Benchmark Dataset created for the SULI program at ORNL (2021). To use this benchmark dataset, you must install the conda environment with the dependencies below. Using different versions of the dependencies may result in errors.
 
-### data-analysis 
-This directory includes files that 
-1) analyze data (data-analysis.py/slurm)
-2) take 1024x1024 grid and create 256 subtiles (subsampling.py/slurm)
-3) analyze tiles (tile-analysis.py/slurm)
-4) combine tiles into months and years (time-series)
 
-### pythonfiles
-This directory includes 
-1) the convLSTM (model.py) 
-2) the main code to create train/val/test datasets, and use these on the model (main.py/run.slurm)
-3) remaining files are empty
-
-To run this on andes, please use run.slurm, which runs main.py as a slurm job.
-Alternatively, you can run directly using python3
-
-### scripts
-TBD
-
-### Conda Environment Dependencies
+## Conda Environment Dependencies
 dependencies:
-  - xarray
-  - tensorflow
-  - seaborn
-  - pickleshare
-  - jupyter
-  - jupyterlab
-  - netcdf4
-  - dask
   - python=3.7
-  - mpi4py
-  - nco
+  - tensorflow=2.4.1
+  - tensorflow-gpu=2.4.1
+  - seaborn=0.11.1
+  - netcdf4=1.5.7
+  - dask=2021.7.0
   - cdo=1.9.8
   - h5netcdf=0.11.0
+  - pandas=1.1.3
+  - xarray=0.18.2
+  - scikit-image=0.18.1
+  - numpy=1.19.5
 
+
+## Repository structure
+1) ```tile-generation```
+2) ```deep-learning```
+
+The ```tile-generation``` directory contains files needed to create the tiles. The ```deep-learning``` directory contains the baseline model, which is a convolutional LSTM (convLSTM).
+
+## Step 1: tile generation 
+For this step, run the code in ```tile-generation```. The entirety of this step will take place in ```tiles-generation```. The original MRMS dataset consists of 11 years of netcdf files of a 1024x1024 region. Each netcdf file is a 5 minute interval within the 11 years. The directory structure of the provided data is as follows:
+
+```bash
+$ tree -L 1 .
+.
+├── 2001
+├── 2002
+├── 2003
+├── 2004
+├── 2005
+├── 2006
+├── 2007
+├── 2008
+├── 2009
+├── 2010
+└── 2011
+```
+
+The current code only works via slurm scripting. This is to parallelize the process. However, there are explanations on how this can be changed to your settings.
+
+### Step 1.1: Run create-tiles.py
+First, we want to create the tiles from the 1024x1024 region. You first need to fill in the json parameters for the ```create-tiles.json``` file. Next, run the following:
+
+```
+srun -n{NUMBER OF PROCESSES PER NODE} -N1 python3 create-tiles.py {YEAR} &
+```
+
+NUMBER of PROCESSES PER NODE will determine the rank within ```create-tiles.py```
+YEAR will determine what year you are creating tiles for. This is a required command line argument for 
+
+To create tiles for all 11 years of data, you will need to run the ```srun``` command for each year from 2001-2011. Running this will result in the same directory structure as shown previously
+
+### Step 1.2: Run combine-single-tiles.py
+Once you have created the tiles in Step 1.1, you will need to combine the tiles. First fill in the json parameters for the ```combine-tiles.json``` file. Next, run the following:
+
+```
+srun -n{NUMBER OF PROCESSES PER NODE} -N1 python3 combine-single-tiles.py {YEAR} &
+```
+
+To create tiles for all 11 years of data, you will need to run the ```srun``` command for each year from 2001-2011. Running this will result in the same directory structure as shown previously. Within each year directory (for ex: 2001), you will have 12 netcdf files, one for each month of the year. 
+
+
+### Step 1.3: Run combine-monthly-tiles.py
+The next step after Step 1.2 is to merge the monthly netcdf files into one annual netcdf file. To do this, you need to run the following:
+
+```
+srun -n{NUMBER OF PROCESSES PER NODE} -N1 python3 combine-monthly-tiles.py {YEAR} &
+```
+
+After step 1.3, for each tile, there will be 1 file that consists of all of the time frames per year.
+
+
+## Step 2: deep learning
+You must complete the entirety of Step 1 in order for Step 2 to work. The entirety of this section takes place within the ```deep-learning``` directory.
+
+### Step 2.1: Run preprocessing.py
+This step takes the tiles, and creates datasets stored as npy files. You must first fill the json parameters within ```preprocessing.json```. Then you can run the preprocessing process via the following:
+
+```
+python3 preprocessing.py
+```
+
+Currently, there is no parallel implementation for this step. However, one alternative is to run this script several times, and instead of random tile generation within each script, have a set list of tileIDs for each script.
+
+### Step 2.2: Run main.py
+After Step 2.1, you need to fill the json parameters within ```main.json```.  Then you can run ```main.py``` via the following:
+
+```
+CUDA_VISIBLE_DEVICES={GPU_IDS} python3 main.py 1> out.txt 2> err.txt &
+```
+
+GPU_IDS is a list of numbers. For example if there are 8 GPUs available, the IDs will be 0,1,2,3,4,5,6,7. If you want to use 4 GPUs, write GPU_IDS = 0,1,2,3. 
+This will run the training process based on the datasets created in Step 2.1. Any errors will show in ```err.txt``` and the general output from the script will show in ```out.txt```. When running this, be careful of your batch size, as you can easily overload memory.
+
+### Step 2.3: Run predictions.py
+After Step 2.2, you will have a saved model. If you want to run predictions on the model, first fill the json parameters within ```predictions.json```. Then, you can run ```predictions.py``` via the following:
+
+```
+CUDA_VISIBLE_DEVICES={GPU_IDS} python3 predictions.py 1> out.txt 2> err.txt &
+```
