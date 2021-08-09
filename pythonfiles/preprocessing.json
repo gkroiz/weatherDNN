@@ -4,7 +4,10 @@
     "test_years" : ["2005"],
     "lead_time_x" : 20,
     "lead_time_y" : 5,
-    "train_loc":"/gpfs/alpine/cli900/world-shared/users/gkroiz1/data_for_model/train_data.npy",
-    "val_loc":"/gpfs/alpine/cli900/world-shared/users/gkroiz1/data_for_model/val_data.npy",
-    "test_loc":"/gpfs/alpine/cli900/world-shared/users/gkroiz1/data_for_model/test_data.npy"
+    "train_loc":"ENTER LOCATION FOR WHERE TO SAVE TRAINING DATA",
+    "val_loc":"ENTER LOCATION FOR WHERE TO SAVE VALIDATION DATA",
+    "test_loc":"ENTER LOCATION FOR WHERE TO SAVE TESTING DATA",
+    "tiles_dir":"ENTER WHERE TILES ARE LOCATED",
+    "meta_data_loc": "ENTER LOCATION FOR META DATA INFO",
+    "num_tiles": 1
 }

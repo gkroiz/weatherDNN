@@ -1,3 +1,12 @@
+#################################################################################
+# file name: predictions.py                                                     #
+# author: Gerson Kroiz                                                          #
+# file desc: this model takes the trained model from main.py and conducts       #
+# predictions                                                                   #
+# requirements: main.py, main.json, preprocessing.py, model.py                  #
+#################################################################################
+
+import json
 from matplotlib.colors import Normalize
 import pandas as pd
 import os
@@ -15,13 +24,23 @@ import tensorflow.keras as keras
 import tensorflow as tf
 from skimage.io import imread
 from skimage.transform import resize
-# import math
 from csv import reader
 from tensorflow.keras.layers import LeakyReLU
 from matplotlib import ticker
 
-# import random
-
+#################################################################################
+# function: customm_loss                                                        #
+# description: takes the predicted and true y values, and calculates            #
+#              WMSE (weighted MSE function)                                     #
+#              as described in the technical report                             #
+# inputs:                                                                       #
+# 1) y_true: an array of the true labels, or predicted y values.                #
+# 2) y_pred: an array of the predicted labels, or predicted y values.           #
+# 3) tileSize: size of tiles.                                                   #
+#                                                                               #
+#outputs:                                                                       #
+# 1) loss_value: loss value from rmse                                           #
+################################################################################# 
 def custom_loss(y_true, y_pred, tileSize = 64):
             y_true = tf.cast(y_true, tf.float32)
             y_pred = tf.cast(y_pred, tf.float32)
@@ -45,29 +64,33 @@ def custom_loss(y_true, y_pred, tileSize = 64):
                 elif npNumZeros <= median:
                     sample_weights[i] = sample_weights[i] * 2
             per_example_loss = mse(y_true, y_pred)
-            a = tf.nn.compute_average_loss(per_example_loss, sample_weight = sample_weights, global_batch_size = GLOBAL_BATCH_SIZE)
-            # print('a shape: ' + str(a.shape))
-            return tf.nn.compute_average_loss(per_example_loss, sample_weight = sample_weights, global_batch_size = GLOBAL_BATCH_SIZE)
+            average_loss = tf.nn.compute_average_loss(per_example_loss, sample_weight = sample_weights, global_batch_size = GLOBAL_BATCH_SIZE)
+            return average_loss
+
 if __name__ == "__main__":
+
+    with open("predictions.json", 'r') as inFile:
+        json_params = loadf(inFile)
+
+    model_loc = json_params['model_loc']
     #DATA LOCATION
     DATE = '08-16-2005'
     DATALOC = '/raid/gkroiz1/gtDays/t-194-64-' + DATE + '.npy'
     SAVEPREDLOC = '/raid/gkroiz1/predDaysComplex/t-194-64-' + DATE + '-pred.npy'
     SAVEGTLOC = '/raid/gkroiz1/gtDaysComplex/t-194-64-' + DATE + '-gt.npy'
     #mse
-    # MODELLOC = 'trained_model.h5'
     #custom
-    MODELLOC = 'tmp_model.h5'
 
     NETCDFLOC = '/raid/gkroiz1/netcdfFiles/'
     PLOTSLOC = '/home/gkroiz1/weatherDNN/pythonfiles/plots/'
+
+    #load model and custom loss function
     mse = tf.keras.losses.MeanSquaredError(reduction = keras.losses.Reduction.NONE)
     batch_size = 128
     strategy = tf.distribute.MirroredStrategy()
     BATCH_SIZE_PER_REPLICA = batch_size
     GLOBAL_BATCH_SIZE = BATCH_SIZE_PER_REPLICA * strategy.num_replicas_in_sync    
-    model = keras.models.load_model(MODELLOC, custom_objects={'custom_loss': custom_loss})
-    # model = keras.models.load_model(MODELLOC)
+    model = keras.models.load_model(model_loc, custom_objects={'custom_loss': custom_loss})
 
     lead_time_x = 20
     lead_time_y = 5
@@ -87,13 +110,7 @@ if __name__ == "__main__":
     y_pred = model.predict(x_gt)
     y_pred = np.squeeze(y_pred)
 
-    print('y_pred shape: ' + str(y_pred.shape))
-    # print('y_pred_sum: ' + str(np.sum(y_pred)))
-    # print('y_gt_sum: ' + str(np.sum(y_gt)))
-    # print('y_pred_avg: ' + str(np.mean(y_pred)))
-    # print('y_gt_avg: ' + str(np.mean(y_gt)))
-    # print('y_pred_max: ' + str(np.max(y_pred)))
-    # print('y_gt_max: ' + str(np.max(y_gt)))
+
 
     # np.save(SAVEPREDLOC, y_pred)
     # np.save(SAVEGTLOC, y_gt)
@@ -122,14 +139,6 @@ if __name__ == "__main__":
         numModPRED += ((y_pred[i] < 10) & (y_pred[i] >= 5)).sum()
         numModToHeavyPRED += ((y_pred[i] < 30) & (y_pred[i] >= 10)).sum()
         numHeavyPRED += (y_pred[i] >= 30).sum()
-        # print('np.count_nonzero(~np.isnan(data)): ' + str(np.count_nonzero(~np.isnan(y_pred[i]))))
-        # print('sum: ' + str((y_gt[i] < 0.5).sum() + ((y_gt[i] < 2) & (y_gt[i] >= 0.5)).sum() + 
-        # ((y_gt[i] < 5) & (y_gt[i] >= 2)).sum() + ((y_gt[i] < 10) & (y_gt[i] >= 5)).sum() + 
-        # (y_gt[i] < 30 & (y_gt[i] >= 10)).sum() + (y_gt[i] >= 30).sum()))
-
-        # print('sum: ' + str((y_pred[i] < 0.5).sum() + ((y_pred[i] < 2) & (y_pred[i] >= 0.5)).sum() + 
-        # ((y_pred[i] < 5) & (y_pred[i] >= 2)).sum() + (y_pred[i] < 10 & (y_pred[i] >= 5)).sum() + 
-        # (y_pred[i] < 30 & (y_pred[i] >= 10)).sum() + (y_pred[i] >= 30).sum()))
 
     mmDayData_gt = mmDayData_gt * 24 / (y_gt.shape[0])
     mmDayData_pred = mmDayData_pred * 24 / (y_gt.shape[0])

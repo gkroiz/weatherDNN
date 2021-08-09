@@ -1,5 +1,12 @@
-# file description: where main is located, generates data, compiles model,
-# trains model, and eval's model
+#################################################################################
+# file name: main.py                                                            #
+# author: Gerson Kroiz                                                          #
+# file desc: this file takes the convLSTM from                                  #
+# model.py, creates training and validation datasets based on npy files,        #
+# and trains the model on the datasets using Tensorflow's                       #
+# distributed training strategies                                               #
+# requirements: main.json, preprocessing.py, model.py                           #
+#################################################################################
 
 import pandas as pd
 import os
@@ -16,87 +23,52 @@ import tensorflow.keras as keras
 import tensorflow as tf
 from skimage.io import imread
 from skimage.transform import resize
-# import math
+
 from csv import reader
-# import random
 from sys import getsizeof
-# from numba import jit, prange
 
-# @jit(parallel=True)
-def custom_loss(y_true, y_pred, tileSize = 64):
-    y_true = tf.cast(y_true, tf.float32)
-    y_pred = tf.cast(y_pred, tf.float32)
-    print('y_true shape: ' + str(y_true.get_shape()))
-    np_true = y_true.numpy()
-    # print('np_true shape: ' + str(np_true.shape))
-    # np_pred = y_true.numpy()
-    # npNumNonZeros = np.count_nonzero(np_true)
-    subBatchSize = np_true.shape[0]
-    median = int(0.975 * tileSize * tileSize)
-    q3 = int(0.93 * tileSize * tileSize)
-    outlier = int(0.83 * tileSize * tileSize)
-    loss = keras.metrics.mean_squared_error(y_true, y_pred)
-    print(loss)
-    print('loss.shape: ' + str(tf.shape(loss)))
-    # np_loss = loss.numpy()
-    # print('np_loss shape: ' + str(np_loss.shape))
-    sample_weights = np.ones(np_true.shape[0])
-    for i in range(subBatchSize):
-        npNumZeros = tileSize*tileSize - np.count_nonzero(np_true[i])
-        if npNumZeros <= outlier:
-            # np_loss[i] = np_loss[i] * 285
-            sample_weights[i] = sample_weights[i] * 285
-            # loss_final = tf.concat([loss_final, tf.math.scalar_mul(285.0, loss_total[i])], 0)
-            # loss[i] += 285 * keras.metrics.mean_squared_error(y_true[i], y_pred[i])
-        elif npNumZeros <= q3:
-            # np_loss[i] = np_loss[i] * 3
-            sample_weights[i] = sample_weights[i] * 3
+import pandas as pd
+import os
+import time
+from json import load as loadf
+import netCDF4 as nc4
+import xarray as xr
+import numpy as np
+import pickle
+from model import build_model
+from preprocessing import train_val_test_gen
 
-            # loss_final = tf.concat([loss_final, tf.math.scalar_mul(3.0, loss_total[i])], 0)
-            # loss[i] += 3 * keras.metrics.mean_squared_error(y_true[i], y_pred[i])
-        elif npNumZeros <= median:
-            # loss_final = tf.concat([loss_final, tf.math.scalar_mul(2.0, loss_total[i])], 0)
-            # np_loss[i] = np_loss[i] * 2
-            sample_weights[i] = sample_weights[i] * 2
-        # else:
+#for plotting
+from matplotlib import pyplot as plt
+import tensorflow.keras as keras
+import tensorflow as tf
+from skimage.io import imread
+from skimage.transform import resize
+from csv import reader
+from sys import getsizeof
 
-            # loss_final = tf.concat([loss_final, loss_total[i]], 0)
-            # loss[i] += keras.metrics.mean_squared_error(y_true[i], y_pred[i])
-        # print(str(i) + ' loss avg: ' + str(tf.math.reduce_mean(loss)))
-        # print('i: ' + str(i) + ', loss_final.shape: ' + str(loss_final.shape))
-    # tmp = tf.convert_to_tensor(np_loss)
-    # print(loss)
-    # tmp = loss.numpy()
-    # tmp = tf.convert_to_tensor(tmp)
-    print('sample_weights shape: ' + str(sample_weights.shape))
-    tf_weights = tf.convert_to_tensor(sample_weights)
-    m = keras.metrics.RootMeanSquaredError()
-    m.update_state(y_true, y_pred, sample_weight = tf_weights)
-    print(m.result().numpy())
-    # print(tmp)
-    # print('loss.shape: ' + str(tf.shape(tmp)))
-    # print('element equal? ' + str(tf.math.equal(loss, tmp)))
-
-    test = np.mean(np.square(y_true - y_pred), axis=-1)
-    print('test.shape:  ' + str(test.shape))
-    return m.result().numpy()
-
+#################################################################################
+# function: scheduler                                                           #
+# description: decay loss function                                              #
+# inputs:                                                                       #
+# 1) epoch: what epoch the model is on                                          #
+# 2) lr: the starting learning rate                                             #
+# outputs:                                                                      #
+# 1) value resulting from the scheduler                                         #
+################################################################################# 
 def scheduler(epoch, lr):
     if epoch < 10:
         return lr
     else:
         return lr * tf.math.exp(-0.1)
 
+#################################################################################
+# function: plotTraining                                                        #
+# description: plots the validation loss and loss over epoch                    #
+# inputs:                                                                       #
+# 1) history: training history from main                                        #
+################################################################################# 
 def plotTraining(history):
-    # print('in plotting function')
-    # plt.plot(history.history['accuracy'])
-    # plt.plot(history.history['val_accuracy'])
-    # plt.title('model accuracy')
-    # plt.ylabel('accuracy')
-    # plt.xlabel('epoch')
-    # plt.legend(['train', 'val'], loc='upper left')
-    # plt.savefig('/home/gkroiz1/weatherDNN/pythonfiles/trainingaccuracy.pdf')
-
     plt.plot(history.history['loss'])
     plt.plot(history.history['val_loss'])
     plt.title('model loss')
@@ -105,8 +77,34 @@ def plotTraining(history):
     plt.legend(['train', 'val'], loc='upper left')
     plt.savefig('/home/gkroiz1/weatherDNN/pythonfiles/trainingval.pdf')
 
-#class to load in data that does not fit into memory
+
+#################################################################################
+# class: customDataLoader                                                       #
+# description: based on keras.utils.Sequence, it is a data loader that only     #
+#              loads in a batch worth of data into memory. The dataLoader loads #
+#              data in sequential order based on the ordering of files provided #
+#              in meta_data.csv                                                 #
+################################################################################# 
 class customDataLoader(keras.utils.Sequence):
+
+    #################################################################################
+    # function: __init__                                                            #
+    # description: constructor for the customDataLoader                             #
+    # inputs:                                                                       #
+    # 1) self: class instance                                                       #
+    # 2) tileIDs: which tiles are included in the entire dataset, is an array       #
+    # 3) num_samples_per_tile: number of samples that are within each tile provided #
+    #    by metadata meta_data.csv                                                  #
+    # 4) batch_size: size of a batch                                                #
+    # 5) steps_per_epoch: ceil(number of total samples in dataset / batch_size)     #
+    # 6) lead_frames_x: number of consecutive time frames in x_data                 #        
+    # 7) lead_frames_y: number of consecutive time frames in y_data                 #
+    # 8) tileSize: size of the tiles                                                #
+    # 9) data_loc: location of the data                                             #
+    # 10) dataType: default is 'err', possible values are 'train', 'val', and       #
+    #     'test'. This helps distinguish what type of data the dataLoader loads     #
+    #     whether it is train, val, or test data                                    #
+    ################################################################################# 
     def __init__(self, tileIDs, num_samples_per_tile, batch_size, steps_per_epoch, 
     lead_frames_x, lead_frames_y, tileSize, data_loc, dataType = 'err'):
 
@@ -116,8 +114,10 @@ class customDataLoader(keras.utils.Sequence):
             raise ValueError('Invalid data type for custom data loader. Expected one of %s' %dataTypes)
 
         #define class variables
-        # self.x_data, self.y_data = np.array([-1]), np.array([-1])
+
+        #set data as an empty array
         self.data = np.array([-1])
+
         self.batch_size = batch_size
         self.all_tiles = tileIDs
         self.num_samples_per_tile =  num_samples_per_tile
@@ -126,191 +126,208 @@ class customDataLoader(keras.utils.Sequence):
         self.lead_frames_x = lead_frames_x
         self.lead_frames_y = lead_frames_y
         self.dataType = dataType
-        self.batches_in_tile_counter = 0
-        self.tile_counter = 0
         self.tileSize = tileSize
 
+        #sest counters to 0
+        #batches_in_tile_counter tracks how many batches have already iterated through from a single tile
+        self.batches_in_tile_counter = 0
+        #tile_counter tracks how many tiles have already been iterated through
+        self.tile_counter = 0
 
 
-    #returns number of steps per epoch, based on calculation outside of function
+    #################################################################################
+    # function: __len__                                                             #
+    # description: returns number of steps per epoch, based on calculation outside  #
+    #              of function                                                      #
+    # input:                                                                        #
+    # 1) self: class instance                                                       #
+    ################################################################################# 
     def __len__(self):
         return self.steps_per_epoch - 1
 
-    #returns one batch
-    def __getitem__(self, index):
-        # print('mem of data: (' + str(getsizeof(self.data)) + '), self.data.shape: ' + str(self.data.shape))
-        #read new file
-        if (self.data.shape == (1,)):
-           
-            self.data = np.load(self.data_loc + self.dataType + '-t-' + str(self.all_tiles[self.tile_counter]) + '.npy', mmap_mode='r')
-            # self.x_data = data[:,0:lead_frames_x]
-            # self.y_data = data[:,lead_frames_x-1:lead_frames_x+lead_frames_y-1]
+    #################################################################################
+    # function: __getitem__                                                         #
+    # description: returns one batch worth of data. If the dataLoader reaches the   #
+    #              end of a file, then the batch is a smaller size than batch_size  #
+    # input:                                                                        #
+    # 1) self: class instance                                                       #
+    ################################################################################# 
+    def __getitem__(self):
 
-        #create batch (if batch size does not ift in dataset. i.e, your at the end of the file)
+        #check if the data stored in the object is empty (is empty after object initialization)
+        #if self.data is empty, then a file is loaded using numpy's mmap mode (so it is not entirely loaded into memory)
+        if (self.data.shape == (1,)):
+            self.data = np.load(self.data_loc + self.dataType + '-t-' + str(self.all_tiles[self.tile_counter]) + '.npy', mmap_mode='r')
+
         self.batches_in_tile_counter += 1
-        # print('self.data_loc: ' + self.data_loc)
-        # print('self.dataType: ' + self.dataType)
-        # print('test: ' + self.data_loc + self.dataType + '-t-' + str(self.all_tiles[self.tile_counter]) + '.npy')
-        filename = self.data_loc + self.dataType + '-t-' + str(self.all_tiles[self.tile_counter]) + '.npy'
+
+        #create batch (if batch size does not fit in dataset. i.e, your at the end of the file)
+        # in this case, the batch will have a size smaller than batch_size
         if (self.batches_in_tile_counter) * self.batch_size >= self.num_samples_per_tile[self.tile_counter]:
-            smallerBatchSize = self.num_samples_per_tile[self.tile_counter] % self.batch_size
             x = self.data[(self.batches_in_tile_counter-1) * self.batch_size:-1, 0:self.lead_frames_x]
             y = self.data[(self.batches_in_tile_counter-1) * self.batch_size:-1, self.lead_frames_x:self.lead_frames_x + self.lead_frames_y]
-            # print('x.shape: ' + str(x.shape) + ', y.shape: ' + str(y.shape))
-            # print('getsizeof(x): ' + str(getsizeof(x)) + ', getsizeof(y): ' + str(getsizeof(y)))
+
+            #remove data in self.data and update counters accordingly
             self.data = np.array([-1])
             self.batches_in_tile_counter = 0
             self.tile_counter += 1
 
+            #return batch, in form of x and y data
             return x, y
 
         #create batch (if batch size fits in dataset)
+        # in this case, batch will have size equal to batch_size
         else:
             x = self.data[(self.batches_in_tile_counter-1) * self.batch_size:self.batches_in_tile_counter * self.batch_size, 0:self.lead_frames_x]
             y = self.data[(self.batches_in_tile_counter-1) * self.batch_size:self.batches_in_tile_counter * self.batch_size, self.lead_frames_x: self.lead_frames_x + self.lead_frames_y]
-            # print('x.shape: ' + str(x.shape) + ', y.shape: ' + str(y.shape))
-            # print('getsizeof(x): ' + str(getsizeof(x)) + ', getsizeof(y): ' + str(getsizeof(y)))            
+            
+            #return batch, in form of x and y data
             return x, y
 
-    #reset variables at end of epoch
+    #################################################################################
+    # function: __getitem__                                                         #
+    # description: resets counters and removes data in self.data at end of epoch    #
+    # input:                                                                        #
+    # 1) self: class instance                                                       #
+    ################################################################################# 
     def on_epoch_end(self):
         self.batches_in_tile_counter = 0
         self.tile_counter = 0
         self.data = np.array([-1])
 
-if __name__ == "__main__":
-    print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
+if __name__ == "__main__":
+
+    #shows how many GPUs are being used
+    print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
     gpus = tf.config.experimental.list_physical_devices('GPU')
     for gpu in gpus:
         tf.config.experimental.set_memory_growth(gpu, True)
+
+
     with open("main.json", 'r') as inFile:
         json_params = loadf(inFile)
 
-    print('tf version:' + str(tf.__version__))
-    batch_size = 64
+
+    #batch size for data loaders
+    batch_size = 128 
+
+    #number of tiles that are used in the training, validation, and testing data
     num_tiles = 1#64
+
+    #number of epochs
     epochs = 75
+    
+    #size of each tile
     tileSize = 64
+
+    #location of training, validation, and testing data, determined by main.json
     train_loc = json_params["train_loc"]
     val_loc = json_params["val_loc"]
     test_loc = json_params["test_loc"]
+
+    #lead_time refers to amount of consecutive time (in minutes)
+    #lead_time_x and lead_time_y are determined by main.json
     lead_time_x = json_params["lead_time_x"]
     lead_time_y = json_params["lead_time_y"]
-    data_info_loc = json_params["data_info_loc"]
+
+    #meta_data_loc is the location of the metadata, determined by main.json
+    meta_data_loc = json_params["meta_data_loc"]
+
+    #since the dataset works in intervals of 5 minutes,
+    #lead_time_x and lead_time_y need to be divided by 5 for the number of frames
     lead_frames_x = int(lead_time_x/5)
     lead_frames_y = int(lead_time_y/5)
 
+
     train_data, val_data, test_data = [], [], []
-
-    # needMakeData = False
-    # if os.path.isdir(train_loc):
-    #     train_data = np.load(train_loc)
-    # else:
-    #     needMakeData = True
-    # if os.path.isfile(val_loc):
-    #    val_data = np.load(val_loc)
-    # else:
-    #     needMakeData = True
-    # if os.path.isfile(test_loc):
-    #     test_data = np.load(test_loc)
-    # else:
-    #     needMakeData = True
-
-
     
-    # # exit()
-    # print('needMakeData: ' + str(needMakeData))
-    # # randomlyGenTiles = [218, 103, 82, 57, 14, 24, 198, 163, 110, 66, 93, 133, 15, 
-    # # 51, 115, 151, 37, 234, 220, 85, 26, 56, 84, 183, 119, 105, 9, 137, 205, 
-    # # 112, 250, 200, 131, 75, 177, 213, 207, 148, 178, 221, 125, 67, 169, 60, 
-    # # 7, 204, 224, 228, 40, 181, 171, 255, 231, 100, 86, 74, 55, 114, 104, 180, 
-    # # 168, 145, 238, 79, 187, 45, 116, 4, 245, 88, 147, 155, 23, 252, 18]
-    # # randomlyGenTiles = [218]
-    # if needMakeData:
-    #     # tilesIDs = list(range(256))
-    #     tilesIDs = np.random.randint(0,256, 75)
-    #     for i in range(len(tilesIDs)):
-    #         # singleTile = random.choice(tilesIDs)
-    #         train_val_test_gen(train_loc, val_loc, test_loc, data_info_loc, [tilesIDs[i]])
-    #         # tilesIDs.remove(singleTile)
+    #read meta data
+    meta_data_df = pd.read_csv(meta_data_loc, sep = ',', header = 0)
     
-    
-    tileIDs = []
-
-    data_info_df = pd.read_csv(data_info_loc, sep = ',', header = 0)
-    
-    tileIDs = data_info_df['tileID']
-    print(tileIDs)
-    # exit()
-    train_num_samples_per_tile = data_info_df['train_num_samples']
-    val_num_samples_per_tile = data_info_df['val_num_samples']
+    tileIDs = meta_data_df['tileID']
+    train_num_samples_per_tile = meta_data_df['train_num_samples']
+    val_num_samples_per_tile = meta_data_df['val_num_samples']
     train_steps_per_epoch = int(np.sum((train_num_samples_per_tile/batch_size).apply(np.ceil)))
     val_steps_per_epoch = int(np.sum((val_num_samples_per_tile/batch_size).apply(np.ceil)))
 
 
 
-    # print('lead_frames_x: ' + str(lead_frames_x))
-    # print('lead_frames_y: ' + str(lead_frames_y))
-    # train_x = train_data[:,0:lead_frames_x]
-    # train_y = train_data[:,lead_frames_x-1:lead_frames_x+lead_frames_y-1]
-
-    # val_x = val_data[:,0:lead_frames_x]
-    # val_y = val_data[:,lead_frames_x-1:lead_frames_x + lead_frames_y-1]
-
-    # test_x = test_data[:,0:lead_frames_x]
-    # test_y = test_data[:,lead_frames_x-1:lead_frames_x + lead_frames_y-1]
-    print('train steps: ' + str(train_steps_per_epoch) + ', val steps:' + str(val_steps_per_epoch))
-
+    #create training and validation data loaders based on customDataLoader class
     train_batch_generator = customDataLoader(tileIDs, train_num_samples_per_tile, batch_size, train_steps_per_epoch, lead_frames_x, lead_frames_y, tileSize, train_loc, 'train')
     val_batch_generator = customDataLoader(tileIDs, val_num_samples_per_tile, batch_size, val_steps_per_epoch, lead_frames_x, lead_frames_y, tileSize, val_loc, 'val')
 
-    print('before reshaping')
-    # train_x = train_x.reshape((train_x.shape[0], lead_time_x, 64, 64))
-    # train_y = train_y.reshape((train_y.shape[0], lead_time_y))
-
-    #kernel = 3 based on https://arxiv.org/pdf/1506.04214.pdf, kernel 5 results in more complex model
-
+    #input shape to the convLSTM
     input_shape = (lead_frames_x, tileSize, tileSize, 1)
+
+    #distributed training strategy provided by Tensorflow
     strategy = tf.distribute.MirroredStrategy()
-    # strategy = tf.distribute.experimental.CentralStorageStrategy()
-    # strategy = tf.distribute.experimental.ParameterServerStrategy(
-    # tf.distribute.cluster_resolver.TFConfigClusterResolver(),
-    # variable_partitioner=variable_partitioner)
-    # coordinator = tf.distribute.experimental.coordinator.ClusterCoordinator(
-    # strategy)
-    
+    BATCH_SIZE_PER_REPLICA = batch_size
+    GLOBAL_BATCH_SIZE = BATCH_SIZE_PER_REPLICA * strategy.num_replicas_in_sync
     #min number of layers is 2
     with strategy.scope():
-        model = build_model(input_shape, num_layers = 3, filters = 16, kernel_size = 3)
-    opt = keras.optimizers.Adam(learning_rate=1e-3)
+        model = build_model(input_shape, num_layers = 4, filters = 32, kernel_size = 3)
+        opt = keras.optimizers.Adam(learning_rate=1e-3)
+        mse = tf.keras.losses.MeanSquaredError(reduction = keras.losses.Reduction.NONE)
+
+        #################################################################################
+        # function: customm_loss                                                        #
+        # description: takes the predicted and true y values, and calculates            #
+        #              WMSE (weighted MSE function)                                     #
+        #              as described in the technical report                             #
+        # inputs:                                                                       #
+        # 1) y_true: an array of the true labels, or predicted y values.                #
+        # 2) y_pred: an array of the predicted labels, or predicted y values.           #
+        # 3) tileSize: size of tiles.                                                   #
+        #                                                                               #
+        #outputs:                                                                       #
+        # 1) loss_value: loss value from rmse                                           #
+        ################################################################################# 
+        def custom_loss(y_true, y_pred, tileSize = 64):
+            y_true = tf.cast(y_true, tf.float32)
+            y_pred = tf.cast(y_pred, tf.float32)
+            np_true = y_true.numpy()
+            np_true = np.squeeze(np_true)
+            np_pred = y_true.numpy()
+            np_pred = np.squeeze(np_pred)
+
+            subBatchSize = np_true.shape[0]
+            median = int(0.975 * tileSize * tileSize)
+            q3 = int(0.93 * tileSize * tileSize)
+            outlier = int(0.83 * tileSize * tileSize)
+            sample_weights = np.ones(np_true.shape)
+
+            for i in range(subBatchSize):
+                npNumZeros = tileSize*tileSize - np.count_nonzero(np_true[i])
+                if npNumZeros <= outlier:
+                    sample_weights[i] = sample_weights[i] * 285
+                elif npNumZeros <= q3:
+                    sample_weights[i] = sample_weights[i] * 3
+                elif npNumZeros <= median:
+                    sample_weights[i] = sample_weights[i] * 2
+            per_example_loss = mse(y_true, y_pred)
+            average_loss = tf.nn.compute_average_loss(per_example_loss, sample_weight = sample_weights, global_batch_size = GLOBAL_BATCH_SIZE)
+            return average_loss
 
 
 
-    # model.compile(loss=custom_loss, optimizer=opt, metrics =['mse', 'accuracy'])
-    model.compile(loss=tf.keras.losses.MeanSquaredError(), optimizer=opt, run_eagerly=True, metrics = ['mse'])
+        model.compile(loss=custom_loss, optimizer=opt, run_eagerly=True, metrics = ['mse'])
 
-    early_stopping = keras.callbacks.EarlyStopping(
+        early_stopping = keras.callbacks.EarlyStopping(
                         monitor='val_loss',
                         min_delta=0,
                         patience=10,
                         verbose=1, 
                         mode='auto'
                     )
-    # learning_rate = keras.callbacks.LearningRateScheduler(scheduler)
+        learning_rate = keras.callbacks.LearningRateScheduler(scheduler)
 
+    #print model architecture summary
     print(model.summary())
 
-    # history = model.fit(x = train_batch_generator, steps_per_epoch = train_steps_per_epoch, validation_data = val_batch_generator, validation_steps = val_steps_per_epoch, epochs=epochs, verbose = 2, callbacks=[OnEpochEnd([train_batch_generator.on_epoch_end]), early_stopping, learning_rate])
-    history = model.fit(x = train_batch_generator, validation_data = val_batch_generator, epochs=epochs, verbose = 2, callbacks=[early_stopping])
+    history = model.fit(x = train_batch_generator, validation_data = val_batch_generator, epochs=epochs, verbose = 2, callbacks=[early_stopping, learning_rate])
 
-    model.save('trained_model.h5')
-
-    #load model
-    # keras.models.load_model('trained_model.h5')
-
+    #save model as .h5 file
+    model.save('tmp_model.h5')
 
     plotTraining(history)
-
-    print('after plotting')
-    #write code to test model:
