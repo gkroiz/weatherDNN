@@ -20,6 +20,66 @@ from skimage.transform import resize
 from csv import reader
 # import random
 from sys import getsizeof
+# from numba import jit, prange
+
+# @jit(parallel=True)
+def custom_loss(y_true, y_pred, tileSize = 64):
+    y_true = tf.cast(y_true, tf.float32)
+    y_pred = tf.cast(y_pred, tf.float32)
+    print('y_true shape: ' + str(y_true.get_shape()))
+    np_true = y_true.numpy()
+    # print('np_true shape: ' + str(np_true.shape))
+    # np_pred = y_true.numpy()
+    # npNumNonZeros = np.count_nonzero(np_true)
+    subBatchSize = np_true.shape[0]
+    median = int(0.975 * tileSize * tileSize)
+    q3 = int(0.93 * tileSize * tileSize)
+    outlier = int(0.83 * tileSize * tileSize)
+    loss = keras.metrics.mean_squared_error(y_true, y_pred)
+    print(loss)
+    print('loss.shape: ' + str(tf.shape(loss)))
+    # np_loss = loss.numpy()
+    # print('np_loss shape: ' + str(np_loss.shape))
+    sample_weights = np.ones(np_true.shape[0])
+    for i in range(subBatchSize):
+        npNumZeros = tileSize*tileSize - np.count_nonzero(np_true[i])
+        if npNumZeros <= outlier:
+            # np_loss[i] = np_loss[i] * 285
+            sample_weights[i] = sample_weights[i] * 285
+            # loss_final = tf.concat([loss_final, tf.math.scalar_mul(285.0, loss_total[i])], 0)
+            # loss[i] += 285 * keras.metrics.mean_squared_error(y_true[i], y_pred[i])
+        elif npNumZeros <= q3:
+            # np_loss[i] = np_loss[i] * 3
+            sample_weights[i] = sample_weights[i] * 3
+
+            # loss_final = tf.concat([loss_final, tf.math.scalar_mul(3.0, loss_total[i])], 0)
+            # loss[i] += 3 * keras.metrics.mean_squared_error(y_true[i], y_pred[i])
+        elif npNumZeros <= median:
+            # loss_final = tf.concat([loss_final, tf.math.scalar_mul(2.0, loss_total[i])], 0)
+            # np_loss[i] = np_loss[i] * 2
+            sample_weights[i] = sample_weights[i] * 2
+        # else:
+
+            # loss_final = tf.concat([loss_final, loss_total[i]], 0)
+            # loss[i] += keras.metrics.mean_squared_error(y_true[i], y_pred[i])
+        # print(str(i) + ' loss avg: ' + str(tf.math.reduce_mean(loss)))
+        # print('i: ' + str(i) + ', loss_final.shape: ' + str(loss_final.shape))
+    # tmp = tf.convert_to_tensor(np_loss)
+    # print(loss)
+    # tmp = loss.numpy()
+    # tmp = tf.convert_to_tensor(tmp)
+    print('sample_weights shape: ' + str(sample_weights.shape))
+    tf_weights = tf.convert_to_tensor(sample_weights)
+    m = keras.metrics.RootMeanSquaredError()
+    m.update_state(y_true, y_pred, sample_weight = tf_weights)
+    print(m.result().numpy())
+    # print(tmp)
+    # print('loss.shape: ' + str(tf.shape(tmp)))
+    # print('element equal? ' + str(tf.math.equal(loss, tmp)))
+
+    test = np.mean(np.square(y_true - y_pred), axis=-1)
+    print('test.shape:  ' + str(test.shape))
+    return m.result().numpy()
 
 def scheduler(epoch, lr):
     if epoch < 10:
@@ -28,14 +88,14 @@ def scheduler(epoch, lr):
         return lr * tf.math.exp(-0.1)
 
 def plotTraining(history):
-    print('in plotting function')
-    plt.plot(history.history['accuracy'])
-    plt.plot(history.history['val_accuracy'])
-    plt.title('model accuracy')
-    plt.ylabel('accuracy')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.savefig('/home/gkroiz1/weatherDNN/pythonfiles/trainingaccuracy.pdf')
+    # print('in plotting function')
+    # plt.plot(history.history['accuracy'])
+    # plt.plot(history.history['val_accuracy'])
+    # plt.title('model accuracy')
+    # plt.ylabel('accuracy')
+    # plt.xlabel('epoch')
+    # plt.legend(['train', 'val'], loc='upper left')
+    # plt.savefig('/home/gkroiz1/weatherDNN/pythonfiles/trainingaccuracy.pdf')
 
     plt.plot(history.history['loss'])
     plt.plot(history.history['val_loss'])
@@ -101,7 +161,6 @@ class customDataLoader(keras.utils.Sequence):
             self.data = np.array([-1])
             self.batches_in_tile_counter = 0
             self.tile_counter += 1
-            # print(x.shape)
 
             return x, y
 
@@ -131,8 +190,8 @@ if __name__ == "__main__":
     print('tf version:' + str(tf.__version__))
     batch_size = 64
     num_tiles = 1#64
-    epochs = 100
-    tileSize = 256
+    epochs = 75
+    tileSize = 64
     train_loc = json_params["train_loc"]
     val_loc = json_params["val_loc"]
     test_loc = json_params["test_loc"]
@@ -212,7 +271,7 @@ if __name__ == "__main__":
 
     #kernel = 3 based on https://arxiv.org/pdf/1506.04214.pdf, kernel 5 results in more complex model
 
-    input_shape = (None, tileSize, tileSize, 1)
+    input_shape = (lead_frames_x, tileSize, tileSize, 1)
     strategy = tf.distribute.MirroredStrategy()
     # strategy = tf.distribute.experimental.CentralStorageStrategy()
     # strategy = tf.distribute.experimental.ParameterServerStrategy(
@@ -220,14 +279,17 @@ if __name__ == "__main__":
     # variable_partitioner=variable_partitioner)
     # coordinator = tf.distribute.experimental.coordinator.ClusterCoordinator(
     # strategy)
-    with strategy.scope():
-        model = build_model(input_shape, num_layers = 2, filters = 16, kernel_size = 3)
-    opt = keras.optimizers.Adam(learning_rate=1e-2)
-
-
-
-    model.compile(loss='mse', optimizer=opt, metrics =['mse', 'accuracy'])
     
+    #min number of layers is 2
+    with strategy.scope():
+        model = build_model(input_shape, num_layers = 3, filters = 16, kernel_size = 3)
+    opt = keras.optimizers.Adam(learning_rate=1e-3)
+
+
+
+    # model.compile(loss=custom_loss, optimizer=opt, metrics =['mse', 'accuracy'])
+    model.compile(loss=tf.keras.losses.MeanSquaredError(), optimizer=opt, run_eagerly=True, metrics = ['mse'])
+
     early_stopping = keras.callbacks.EarlyStopping(
                         monitor='val_loss',
                         min_delta=0,
@@ -235,12 +297,12 @@ if __name__ == "__main__":
                         verbose=1, 
                         mode='auto'
                     )
-    learning_rate = keras.callbacks.LearningRateScheduler(scheduler)
+    # learning_rate = keras.callbacks.LearningRateScheduler(scheduler)
 
     print(model.summary())
 
     # history = model.fit(x = train_batch_generator, steps_per_epoch = train_steps_per_epoch, validation_data = val_batch_generator, validation_steps = val_steps_per_epoch, epochs=epochs, verbose = 2, callbacks=[OnEpochEnd([train_batch_generator.on_epoch_end]), early_stopping, learning_rate])
-    history = model.fit(x = train_batch_generator, validation_data = val_batch_generator, epochs=epochs, verbose = 2, callbacks=[early_stopping, learning_rate])
+    history = model.fit(x = train_batch_generator, validation_data = val_batch_generator, epochs=epochs, verbose = 2, callbacks=[early_stopping])
 
     model.save('trained_model.h5')
 
