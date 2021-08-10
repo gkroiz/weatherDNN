@@ -157,7 +157,7 @@ class customDataLoader(keras.utils.Sequence):
         #check if the data stored in the object is empty (is empty after object initialization)
         #if self.data is empty, then a file is loaded using numpy's mmap mode (so it is not entirely loaded into memory)
         if (self.data.shape == (1,)):
-            self.data = np.load(self.data_loc + self.dataType + '-t-' + str(self.all_tiles[self.tile_counter]) + '.npy', mmap_mode='r')
+            self.data = np.load(self.data_loc + '/' + self.dataType + '-t-' + str(self.all_tiles[self.tile_counter]) + '.npy', mmap_mode='r')
 
         self.batches_in_tile_counter += 1
 
@@ -205,7 +205,7 @@ if __name__ == "__main__":
         tf.config.experimental.set_memory_growth(gpu, True)
 
 
-    with open("main.json", 'r') as inFile:
+    with open("baseline-model.json", 'r') as inFile:
         json_params = loadf(inFile)
 
 
@@ -284,6 +284,8 @@ if __name__ == "__main__":
         # 1) loss_value: loss value from rmse                                           #
         ################################################################################# 
         def custom_loss(y_true, y_pred, tileSize = 64):
+
+            #convert y_true and y_pred to numpy arrays for computation. Additionally, remove any unecessary dimensions
             y_true = tf.cast(y_true, tf.float32)
             y_pred = tf.cast(y_pred, tf.float32)
             np_true = y_true.numpy()
@@ -292,11 +294,16 @@ if __name__ == "__main__":
             np_pred = np.squeeze(np_pred)
 
             subBatchSize = np_true.shape[0]
+
+            #calculate median, q3, and outlier based on box-plot distribution of the data described in the technical report
             median = int(0.975 * tileSize * tileSize)
             q3 = int(0.93 * tileSize * tileSize)
             outlier = int(0.83 * tileSize * tileSize)
-            sample_weights = np.ones(np_true.shape)
 
+            #weights for each sample
+            sample_weights = np.ones(np_true.shape)
+            
+            #provide weights for each sample, stored in sample_weights. The weights are defined based on the technical report
             for i in range(subBatchSize):
                 npNumZeros = tileSize*tileSize - np.count_nonzero(np_true[i])
                 if npNumZeros <= outlier:
@@ -305,8 +312,13 @@ if __name__ == "__main__":
                     sample_weights[i] = sample_weights[i] * 3
                 elif npNumZeros <= median:
                     sample_weights[i] = sample_weights[i] * 2
+
+            #calculate loss for each sample
             per_example_loss = mse(y_true, y_pred)
+            
+            #calculate average loss across all GPUs
             average_loss = tf.nn.compute_average_loss(per_example_loss, sample_weight = sample_weights, global_batch_size = GLOBAL_BATCH_SIZE)
+
             return average_loss
 
 
@@ -328,6 +340,12 @@ if __name__ == "__main__":
     history = model.fit(x = train_batch_generator, validation_data = val_batch_generator, epochs=epochs, verbose = 2, callbacks=[early_stopping, learning_rate])
 
     #save model as .h5 file
-    model.save('tmp_model.h5')
+    model.save(json_params["saved_model_loc"])
 
     plotTraining(history)
+
+
+
+#################################################################################
+#                                  EOF                                          #
+#################################################################################

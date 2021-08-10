@@ -35,11 +35,12 @@ def genDataset(years, tile_loc, lead_time_x, lead_time_y, tileIDs = [-1]):
     dataset = []
     
 
-    #for loop for each year in the range of years
+    #iterates through a for loop for each year in years array
     for year in years:
         tiles = []
         
-        #check which tiles to add to dataset
+        #check which tiles to add to dataset. if tilesIDs = [-1], then the genDataset will include all tiles. 
+        #otherwise, will only append tiles in tilesIDs
         if tileIDs[0] == -1:
             tiles = list(range(0, 256))
         else:
@@ -53,14 +54,19 @@ def genDataset(years, tile_loc, lead_time_x, lead_time_y, tileIDs = [-1]):
         for tileIndex in range(len(tiles)):
             tile_year_loc = tiles_year_loc + 'tile' + str(tiles[tileIndex]) + '/'
 
-            #open anual tile file
+            #open annual tile file
             file_loc = tile_year_loc + '/t-' + str(tiles[tileIndex]) + '-' + str(year) + '-time-series.nc'
             fileData = xr.open_dataset(file_loc)
 
 
-            #go through time series
-            counter = 0
+            #go through entire annual tile file
+
+            #tileSliceCounter tracks the point of time within the tile data
+            timeSliceCounter = 0
+
+            #needContinue is a boolean that 
             needContinue = False
+
             continueCounter = 0
             total_time_per_sample = lead_time_x + lead_time_y
             total_num_time_frames = int(total_time_per_sample / 5)
@@ -81,19 +87,19 @@ def genDataset(years, tile_loc, lead_time_x, lead_time_y, tileIDs = [-1]):
                 
                 #check if there are n consecutive time frames, where n = total_num_time_frames
                 isValid = False
-                if counter + total_num_time_frames >= fileData.PrecipRate_surface.shape[0]:
+                if timeSliceCounter + total_num_time_frames >= fileData.PrecipRate_surface.shape[0]:
                     break
-                if time_frame.data + np.timedelta64(total_time_per_sample, 'm') == fileData.time[counter+total_num_time_frames]:
+                if time_frame.data + np.timedelta64(total_time_per_sample, 'm') == fileData.time[timeSliceCounter+total_num_time_frames]:
                     isValid = True
                 if isValid:
 
                     #check if there are NaN values, if so, do not include the sample
-                    if not np.isnan(fileData.PrecipRate_surface[counter:counter+total_num_time_frames]).any():
-                        dataset.append(fileData.PrecipRate_surface[counter:counter+total_num_time_frames])
-                    counter += total_num_time_frames
+                    if not np.isnan(fileData.PrecipRate_surface[timeSliceCounter:timeSliceCounter+total_num_time_frames]).any():
+                        dataset.append(fileData.PrecipRate_surface[timeSliceCounter:timeSliceCounter+total_num_time_frames])
+                    timeSliceCounter += total_num_time_frames
                     needContinue = True
                 else:
-                    counter += 1
+                    timeSliceCounter += 1
 
                 
         numpy_dataset = np.array(dataset)
@@ -108,7 +114,7 @@ def genDataset(years, tile_loc, lead_time_x, lead_time_y, tileIDs = [-1]):
 # 1) tileID: location of the tile                                               #
 ################################################################################# 
 def train_val_test_gen(tileIDs = [-1]):
-    with open("preprocessing.json", 'r') as inFile:
+    with open("baseline-model.json", 'r') as inFile:
         json_params = loadf(inFile)
     #create one variable that includes all of the data
 
@@ -121,7 +127,7 @@ def train_val_test_gen(tileIDs = [-1]):
     meta_data_loc = json_params["meta_data_loc"]
 
     #directory where tiles are located
-    TILESDIR = json_params["tile_dir"]
+    tiles_dir_loc = json_params["tiles_dir_loc"]
 
     #directories where to save the data
     save_train_loc = json_params["train_loc"]
@@ -130,9 +136,9 @@ def train_val_test_gen(tileIDs = [-1]):
 
     #generate training, validation, and testing data
     train_data, val_data, test_data = [], [], []
-    train_data = genDataset(train_years, TILESDIR, lead_time_x, lead_time_y, tileIDs)
-    val_data = genDataset(val_years, TILESDIR, lead_time_x, lead_time_y, tileIDs)
-    test_data = genDataset(test_years, TILESDIR, lead_time_x, lead_time_y, tileIDs)
+    train_data = genDataset(train_years, tiles_dir_loc, lead_time_x, lead_time_y, tileIDs)
+    val_data = genDataset(val_years, tiles_dir_loc, lead_time_x, lead_time_y, tileIDs)
+    test_data = genDataset(test_years, tiles_dir_loc, lead_time_x, lead_time_y, tileIDs)
 
     #add dimension to each dataset (needed for convLSTM)
     train_data = np.expand_dims(train_data, axis=-1)
@@ -157,10 +163,16 @@ def train_val_test_gen(tileIDs = [-1]):
 
 if __name__ == "__main__":
 
-    with open("preprocessing.json", 'r') as inFile:
+    with open("baseline-model.json", 'r') as inFile:
         json_params = loadf(inFile)
 
     num_tiles = json_params["num_tiles"]
     tilesIDs = np.random.randint(0,256, num_tiles)
     for i in range(len(tilesIDs)):
         train_val_test_gen([tilesIDs[i]])
+
+
+
+#################################################################################
+#                                  EOF                                          #
+#################################################################################

@@ -1,6 +1,8 @@
 {
-    "data_dir_loc": "ENTER LOCATION OF XARRAY DATA HERE",
-    "tiles_dir_loc": "ENTER LOCATION OF WHERE TO SAVE TILES",
-    "combined_tiles_dir_loc": "ENTER LOCATION OF WHERE TO SAVE COMBINED TILES LOC",
-    "tile_dim": ENTER DIMENSIONS OF TILE
+    "data_dir_loc": "",
+    "tiles_dir_loc": "",
+    "combined_tiles_dir_loc": "",
+    "tile_dim": 0,
+    "entire_dataset_dim": 0
+
 }

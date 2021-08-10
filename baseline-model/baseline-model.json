@@ -1,0 +1,14 @@
+{
+    "train_years" : [],
+    "val_years" : [],
+    "test_years" : [],
+    "tiles_dir_loc": "",
+    "train_loc": "",
+    "val_loc": "",
+    "test_loc": "",
+    "meta_data_loc": "",
+    "saved_model_loc": "",
+    "lead_time_x" : 0,
+    "lead_time_y" : 0,
+    "num_tiles": 0
+}

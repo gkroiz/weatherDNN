@@ -6,8 +6,6 @@
 # requirements: create-tiles.json                                               #
 #################################################################################
 
-# Description: takes individual tiles and combines them into larger netcdf files by month for each year
-
 import netCDF4
 from netCDF4 import Dataset
 import time
@@ -21,26 +19,36 @@ from json import load as loadf
 #additionally, the year is based on command line argument
 if __name__ == "__main__":
 
-    year = sys.argv[1]
+    #read rank, size, and year via command line arguments
     rank = int(os.environ["SLURM_PROCID"])
     size = int(os.environ["SLURM_NPROCS"])
+    year = sys.argv[1]
 
-    tileDim = 256
-    numTilesPerAxis = int(1024 / tileDim)
-
+    #open json file
     with open("tile-generation.json", 'r') as inFile:
-        json_params = loadf(inFile)  
+        json_params = loadf(inFile)
+
+    tile_dim = json_params['tile_dim']
+    entire_dataset_dim = json_params['entire_dataset_dim']
+
+    numTilesPerAxis = int(entire_dataset_dim / tile_dim)
 
     combined_tiles_dir_loc = json_params['combined_tiles_dir_loc'] + str(year)
 
-
-    start = time.time()
+    #iterate through each tile. For each tile, merge monthly files into 1 annual file
     for iter in range(int(numTilesPerAxis*numTilesPerAxis/size)):
             tileID = iter + rank*int(numTilesPerAxis*numTilesPerAxis/size)
             os.chdir(f'{combined_tiles_dir_loc}/tile' + str(tileID))
+            
+            #merge monthly files into 1 annual file
+            exit_val = os.system('cdo -mergetime -cat *.nc t-' + str(tileID) + '-' + str(year) + '-time-series.nc')
 
-            os.system('cdo -mergetime -cat *.nc t-' + str(tileID) + '-' + str(year) + '-time-series.nc')
-    end = time.time()
-    
-    print('rank: ' + str(rank) + ', time elapsed = ' + str(end - start))
+            #error checking
+            if exit_val != 0:
+                sys.exit('Issue with cdo')
 
+
+
+#################################################################################
+#                                  EOF                                          #
+#################################################################################

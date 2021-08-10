@@ -14,16 +14,17 @@ import sys
 from json import load as loadf
 
 
-#currently, this only works with slurm scripts, as the rank and size are determined by slurm job arguments
+#currently, this only works with slurm, as the rank and size are determined by slurm job arguments
 #if you are not using slurm, please change rank and size accordingly
 #additionally, the year is based on command line argument
 if __name__ == "__main__":
+
+    #read rank, size, and year via command line arguments
     rank = int(os.environ["SLURM_PROCID"])
     size = int(os.environ["SLURM_NPROCS"])
-    
-
     year = sys.argv[1]
 
+    #open json file
     with open("tile-generation.json", 'r') as inFile:
         json_params = loadf(inFile)
     
@@ -31,9 +32,12 @@ if __name__ == "__main__":
     data_dir_loc = json_params['data_dir_loc']
 
     #location of where to save tiles
-    tiles_dir_loc = json_params['tiles_dir_loc'] + str(year)
+    tiles_dir_loc = json_params['tiles_dir_loc'] + '/' + str(year)
 
+    #dimensions of entire dataset and individual tiles
     tile_dim = json_params['tile_dim']
+    entire_dataset_dim = json_params['entire_dataset_dim']
+
     numTilesPerAxis = int(1024 / tile_dim)
     
 
@@ -41,7 +45,7 @@ if __name__ == "__main__":
     num_files = len([name for name in os.listdir(data_dir_loc) if os.path.isfile(os.path.join(data_dir_loc, name))])
 
 
-    #make directory for tiles
+    #make directory for tiles (only on rank 0)
     if rank == 0:
         if not os.path.isdir(tiles_dir_loc):
             os.mkdir(tiles_dir_loc)
@@ -51,25 +55,23 @@ if __name__ == "__main__":
     
     time.sleep(60)
 
-    overallStart = time.time()
-
-    #goes through each file
+    #go through each netcdf file for a year. For each netcdf file, divide this into tiles
     for filename in os.listdir(data_dir_loc):
-        # start = time.time()
 
         data = xr.open_dataset(f'{data_dir_loc}/{filename}')
 
-        #goes through each latitude coord
+        #goes through each latitude coord based on tile size
         for lat in range(int(numTilesPerAxis/size)):
 
-            #goes through each longitude coord
+            #goes through each longitude coord based on tile size
             for long in range(numTilesPerAxis):
-                mpi_lat = lat + int(rank)*int(numTilesPerAxis/size)
+                tile_lat = lat + int(rank)*int(numTilesPerAxis/size)
 
-                #make a subdataset of the lat, long, and prec of the tile
+                #make a tile of the lat, long, and prec of the tile
+                #attributes are to keep consistency with the entire dataset netcdf files
                 tile = xr.Dataset(
                     data_vars=dict(
-                        PrecipRate_surface=data.PrecipRate_surface[0, 1024-mpi_lat*tile_dim-tile_dim:1024-mpi_lat*tile_dim, long*tile_dim:long*tile_dim+tile_dim]
+                        PrecipRate_surface=data.PrecipRate_surface[0, entire_dataset_dim-tile_lat*tile_dim-tile_dim:entire_dataset_dim-tile_lat*tile_dim, long*tile_dim:long*tile_dim+tile_dim]
                     ),
                     coords = dict(
                        time=data.time
@@ -77,11 +79,12 @@ if __name__ == "__main__":
                     attrs = dict(Conventions='COARDS', History='created by wgrib2', GRIB2_grid_template = '0')
                     )
 
-                #save dataset
-                os.chdir(tiles_dir_loc + '/tile' + str(mpi_lat * numTilesPerAxis + long))
-                tile.to_netcdf(f't-' + str(mpi_lat * numTilesPerAxis + long) + '-' + str(filename), mode='w', format='netcdf4')
+                #save tile
+                os.chdir(tiles_dir_loc + '/tile' + str(tile_lat * numTilesPerAxis + long))
+                tile.to_netcdf(f't-' + str(tile_lat * numTilesPerAxis + long) + '-' + str(filename), mode='w', format='netcdf4')
 
 
-    overallEnd = time.time()
-    print('year: ' + str(year) + ', rank: ' + str(rank) + ', FINAL TIME = ' + str(overallEnd - overallStart))
 
+#################################################################################
+#                                  EOF                                          #
+#################################################################################
